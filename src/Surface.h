@@ -291,6 +291,29 @@ public:
   std::string toString();
 };
 
+/**
+ * @class XPlane Surface.h "src/Surface.h"
+ * @brief Represents an inclined Plane that is a part of a regular hexagon
+ */
+class HexPlane: public Plane {
+
+private:
+    /** A 2D point for the Hexagon center */
+    Point _center;
+
+    /** The Hexagon's radius */
+    double _radius;
+    
+    /** Number of the Plane on the Hexagon */
+    /** 0 means top left, 1 - left and so on...*/
+    size_t _hex_id;
+    
+    // TODO: possibly add getMinX(Y)/MaxX(Y): corresponding to the 
+    //      section of the plane(lane) that is part of the Hexagon
+public:
+  HexPlane(const double x, const double y, const double radius, 
+           const size_t hex_id, const int id=0, const char* name="");
+};
 
 /**
  * @class Circle Surface.h "src/Surface.h"

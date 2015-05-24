@@ -580,7 +580,7 @@ double ZPlane::getMaxZ(int halfspace){
 
 /**
  * @brief Converts this ZPlane's attributes to a character array.
- * @details The character array returned conatins the type of Plane (ie,
+ * @details The character array returned contains the type of Plane (ie,
  *          ZPLANE) and the A, B, and C coefficients in the
  *          quadratic Surface equation and the location of the Plane along
  *          the z-axis.
@@ -599,10 +599,58 @@ std::string ZPlane::toString() {
   return string.str();
 }
 
+/**
+ * @brief Constructor for an inclined Plane that is a part of a regular hexagon
+ * @param x the x-coordinate of the Hexagon center
+ * @param y the y-coordinate of the Hexagon center
+ * @param radius the radius of the Hexagon (equal to the Hexagon side)
+ * @param num the number of the Hexagon side, used for easier construction
+ * @param id the optional Surface ID
+ * @param name the optional Surface name
+ */
+HexPlane::HexPlane(const double x, const double y, const double radius, 
+                   const size_t hex_id, const int id, const char* name) :
+  Plane(0, 0, 0, id, name) {  // A, B and C will be calculated and set below
+  
+  _surface_type = PLANE;
+  _radius = radius;
+  _center.setX(x);
+  _center.setY(y);
+  _hex_id = hex_id;
+  
+  
+  // The linear coefficients of the Plane(line) are calculated from the two
+  // vertices it passes trough. They on the other hand are 
+  
+  // Determine top vertex
+  Point t, p1, p2; // t - the top point, relative to the beginning of the CS
+  t.setX(0);
+  t.setY(_radius);
+  
+  // rotate the two points to their respective positions
+  double tmp_a = _hex_id * M_PI / 3;
+  p1.setX(t.getX() * cos(tmp_a) - t.getY() * sin(tmp_a));
+  p1.setY(t.getX() * sin(tmp_a) + t.getY() * cos(tmp_a));
+  tmp_a += M_PI / 3; // point p2 is 60 degrees further from p1
+  p2.setX(t.getX() * cos(tmp_a) - t.getY() * sin(tmp_a));
+  p2.setY(t.getX() * sin(tmp_a) + t.getY() * cos(tmp_a));
+  
+  // shift the points to the center
+  p1.setX(p1.getX() + _center.getX());
+  p1.setY(p1.getY() + _center.getY());
+  p2.setX(p2.getX() + _center.getX());
+  p2.setY(p2.getY() + _center.getY());
+  
+  // calculate the Plane coefficients
+  _A = p2.getY() - p1.getY();
+  _B = p1.getX() - p2.getX();
+  _C = p1.getY() * p2.getX() - p1.getX() * p2.getY();
+}
+
 
 /**
  * @brief constructor.
- * @param x the x-coordinte of the Circle center
+ * @param x the x-coordinate of the Circle center
  * @param y the y-coordinate of the Circle center
  * @param radius the radius of the Circle
  * @param id the optional Surface ID
