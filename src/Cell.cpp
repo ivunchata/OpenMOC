@@ -594,7 +594,7 @@ void CellBasic::sectorize() {
   double delta_azim = 2. * M_PI / _num_sectors;
   double A, B;
 
-  /* A container for each of the bouding planes for the sector Cells */
+  /* A container for each of the bounding planes for the sector Cells */
   std::vector<Plane*> planes;
 
   log_printf(DEBUG, "Sectorizing Cell %d with %d sectors",_id, _num_sectors);

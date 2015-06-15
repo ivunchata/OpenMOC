@@ -1091,7 +1091,7 @@ void Lattice::setUniverses(int num_x, int num_y, Universe** universes) {
   _universes.clear();
 
   /* Set the Lattice dimensions */
-  setNumX(num_y);
+  setNumX(num_x);
   setNumY(num_y);
 
   Universe* universe;

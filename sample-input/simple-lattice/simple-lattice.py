@@ -12,7 +12,7 @@ from openmoc.options import Options
 options = Options()
 
 num_threads = options.getNumThreads()
-track_spacing = options.getTrackSpacing()
+track_spacing = options.getTrackSpacing() / 2
 num_azim = options.getNumAzimAngles()
 tolerance = options.getTolerance()
 max_iters = options.getMaxIterations()
@@ -34,16 +34,16 @@ materials = materialize.materialize('../c5g7-materials.h5')
 ###############################################################################
 
 log.py_printf('NORMAL', 'Creating surfaces...')
-
-left = XPlane(x=-2.0, name='left')
-right = XPlane(x=2.0, name='right')
-top = YPlane(y=-2.0, name='top')
-bottom = YPlane(y=2.0, name='bottom')
+a = 12.0
+left = XPlane(x=-a, name='left')
+right = XPlane(x=a, name='right')
+top = YPlane(y=-a, name='top')
+bottom = YPlane(y=a, name='bottom')
 boundaries = [left, right, top, bottom]
 
-large_circle = Circle(x=0.0, y=0.0, radius=0.4, name='large pin')
-medium_circle = Circle(x=0.0, y=0.0, radius=0.3, name='medium pin')
-small_circle = Circle(x=0.0, y=0.0, radius=0.2, name='small pin')
+large_circle = Circle(x=0.0, y=0.0, radius=a/15, name='large pin')
+medium_circle = Circle(x=0.0, y=0.0, radius=a/20, name='medium pin')
+small_circle = Circle(x=0.0, y=0.0, radius=a/30, name='small pin')
 
 for boundary in boundaries: boundary.setBoundaryType(REFLECTIVE)
 
@@ -54,7 +54,7 @@ for boundary in boundaries: boundary.setBoundaryType(REFLECTIVE)
 
 log.py_printf('NORMAL', 'Creating cells...')
 
-large_fuel = CellBasic(name='large pin fuel', rings=3, sectors=8)
+large_fuel = CellBasic(name='large pin fuel', rings=1, sectors=8)
 large_fuel.setMaterial(materials['UO2'])
 large_fuel.addSurface(halfspace=-1, surface=large_circle)
 
@@ -62,11 +62,11 @@ large_moderator = CellBasic(name='large pin moderator', sectors=8)
 large_moderator.setMaterial(materials['Water'])
 large_moderator.addSurface(halfspace=+1, surface=large_circle)
 
-medium_fuel = CellBasic(name='medium pin fuel', rings=3, sectors=8)
+medium_fuel = CellBasic(name='medium pin fuel', rings=3, sectors=5)
 medium_fuel.setMaterial(materials['UO2'])
 medium_fuel.addSurface(halfspace=-1, surface=medium_circle)
 
-medium_moderator = CellBasic(name='medium pin moderator', sectors=8)
+medium_moderator = CellBasic(name='medium pin moderator', sectors=3)
 medium_moderator.setMaterial(materials['Water'])
 medium_moderator.addSurface(halfspace=+1, surface=medium_circle)
 
@@ -111,12 +111,17 @@ root_universe.addCell(root_cell)
 
 log.py_printf('NORMAL', 'Creating simple 4 x 4 lattice...')
 
-lattice = Lattice(name='4x4 lattice')
-lattice.setWidth(width_x=1.0, width_y=1.0)
-lattice.setUniverses([[pin1, pin2, pin1, pin2],
-                      [pin2, pin3, pin2, pin3],
-                      [pin1, pin2, pin1, pin2],
-                      [pin2, pin3, pin2, pin3]])
+lattice = Lattice(name='5x5 lattice')
+lattice.setWidth(width_x=a/3, width_y=a/3)
+#lattice.setNumX(5);
+#lattice.setNumY(4);
+#lattice.setOffset(a/5, a/5)
+lattice.setUniverses([[pin1, pin2, pin1, pin2, pin1, pin2],
+                      [pin2, pin3, pin2, pin3, pin2, pin3],
+                      [pin1, pin2, pin1, pin2, pin1, pin2],
+                      [pin2, pin3, pin2, pin3, pin2, pin3],
+                      [pin1, pin3, pin1, pin3, pin1, pin2],
+                      [pin2, pin3, pin2, pin3, pin2, pin3]])
 root_cell.setFill(lattice)
 
 
@@ -160,7 +165,7 @@ log.py_printf('NORMAL', 'Plotting data...')
 #plotter.plot_tracks(track_generator)
 #plotter.plot_segments(track_generator)
 #plotter.plot_materials(geometry, gridsize=500)
-#plotter.plot_cells(geometry, gridsize=500)
+plotter.plot_cells(geometry, gridsize=500)
 #plotter.plot_flat_source_regions(geometry, gridsize=500)
 #plotter.plot_fluxes(geometry, solver, energy_groups=[1,2,3,4,5,6,7])
 

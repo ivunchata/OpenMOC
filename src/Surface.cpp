@@ -368,7 +368,7 @@ std::string Plane::toString() {
  * @param name the optional name of the XPlane
  */
 XPlane::XPlane(const double x, const int id, const char* name):
-  Plane(1, 0, -x, id) {
+  Plane(1, 0, -x, id, name) {
 
   _surface_type = XPLANE;
   _x = x;
@@ -448,7 +448,7 @@ std::string XPlane::toString() {
  * @param name the optional Surface name
  */
 YPlane::YPlane(const double y, const int id, const char* name):
-  Plane(0, 1, -y, id) {
+  Plane(0, 1, -y, id, name) {
 
   _surface_type = YPLANE;
   _y = y;
@@ -604,49 +604,120 @@ std::string ZPlane::toString() {
  * @param x the x-coordinate of the Hexagon center
  * @param y the y-coordinate of the Hexagon center
  * @param radius the radius of the Hexagon (equal to the Hexagon side)
- * @param num the number of the Hexagon side, used for easier construction
+ * @param hex_id the number of the Hexagon side, used for easier construction
  * @param id the optional Surface ID
  * @param name the optional Surface name
  */
 HexPlane::HexPlane(const double x, const double y, const double radius, 
                    const size_t hex_id, const int id, const char* name) :
-  Plane(0, 0, 0, id, name) {  // A, B and C will be calculated and set below
+  Plane(0., 0., 0., id, name) {  // A, B and C will be calculated and set below
   
   _surface_type = PLANE;
   _radius = radius;
   _center.setX(x);
   _center.setY(y);
-  _hex_id = hex_id;
-  
+  _side_num = hex_id;
   
   // The linear coefficients of the Plane(line) are calculated from the two
-  // vertices it passes trough. They on the other hand are 
-  
+  // vertices it passes trough.
   // Determine top vertex
-  Point t, p1, p2; // t - the top point, relative to the beginning of the CS
+  Point t, _vertex[1]; // t - the top point, relative to the beginning of the CS
   t.setX(0);
   t.setY(_radius);
   
   // rotate the two points to their respective positions
-  double tmp_a = _hex_id * M_PI / 3;
-  p1.setX(t.getX() * cos(tmp_a) - t.getY() * sin(tmp_a));
-  p1.setY(t.getX() * sin(tmp_a) + t.getY() * cos(tmp_a));
-  tmp_a += M_PI / 3; // point p2 is 60 degrees further from p1
-  p2.setX(t.getX() * cos(tmp_a) - t.getY() * sin(tmp_a));
-  p2.setY(t.getX() * sin(tmp_a) + t.getY() * cos(tmp_a));
+  double tmp_a = _side_num * M_PI / 3;
+  _vertex[0].setX(t.getX() * cos(tmp_a) - t.getY() * sin(tmp_a));
+  _vertex[0].setY(t.getX() * sin(tmp_a) + t.getY() * cos(tmp_a));
+  tmp_a += M_PI / 3; // point _vertex[1] is 60 degrees further from _vertex[0]
+  _vertex[1].setX(t.getX() * cos(tmp_a) - t.getY() * sin(tmp_a));
+  _vertex[1].setY(t.getX() * sin(tmp_a) + t.getY() * cos(tmp_a));
   
   // shift the points to the center
-  p1.setX(p1.getX() + _center.getX());
-  p1.setY(p1.getY() + _center.getY());
-  p2.setX(p2.getX() + _center.getX());
-  p2.setY(p2.getY() + _center.getY());
+  _vertex[0].setX(_vertex[0].getX() + _center.getX());
+  _vertex[0].setY(_vertex[0].getY() + _center.getY());
+  _vertex[1].setX(_vertex[1].getX() + _center.getX());
+  _vertex[1].setY(_vertex[1].getY() + _center.getY());
   
   // calculate the Plane coefficients
-  _A = p2.getY() - p1.getY();
-  _B = p1.getX() - p2.getX();
-  _C = p1.getY() * p2.getX() - p1.getX() * p2.getY();
+  _A = _vertex[1].getY() - _vertex[0].getY();
+  _B = _vertex[0].getX() - _vertex[1].getX();
+  _C = _vertex[0].getY() * _vertex[1].getX() - _vertex[0].getX() * _vertex[1].getY();
+  
+
+  // determine min and max points
+  _min_x[0] = _min_x[1] = - std::numeric_limits<double>::infinity();
+  _max_x[0] = _max_x[1] = + std::numeric_limits<double>::infinity();
+  _min_y[0] = _min_y[1] = - std::numeric_limits<double>::infinity();
+  _max_y[0] = _max_y[1] = + std::numeric_limits<double>::infinity();
+  
+//  size_t idx_a = _side_num % 2;
+//  size_t idx_b = (_side_num + 1) % 2;
+//  
+//  if (_side_num % 3 == 0) // side_num is 0 or 3
+//  {
+//    _min_x[idx_a] = _vertex[idx_b].getX();
+//    _max_x[idx_a] = _vertex[idx_a].getX();
+//    _min_y[idx_a] = _vertex[idx_b].getY();
+//    _max_y[idx_a] = _vertex[idx_a].getY();
+//  }
+//
+//  if (_side_num % 3 == 1) // side_num is 1 or 4, i.e. the two vertical sides
+//  {
+//    _max_x[0] = _vertex[0].getX(); // =_vertex[1].getX()
+//    _min_x[1] = _vertex[0].getX(); // =_vertex[1].getX()
+//    _min_y[idx_a] = _vertex[idx_b].getY();
+//    _max_y[idx_a] = _vertex[idx_a].getY();
+//  }
+//
+//  if (_side_num % 3 == 2) // side_num is 0 or 3
+//  {
+//    _min_x[idx_a] = _vertex[idx_a].getX();
+//    _max_x[idx_a] = _vertex[idx_b].getX();
+//    _min_y[idx_a] = _vertex[idx_b].getY();
+//    _max_y[idx_a] = _vertex[idx_a].getY();
+//  }
 }
 
+/**
+ * @brief Returns the minimum x value for one of this HexPlane's halfspaces. 
+ * If the halfspace is from the side of the hexagon center, additional limits are applied.
+ * @param halfspace the halfspace of the HexPlane to consider
+ * @return the minimum x value
+ */
+double HexPlane::getMinX(int halfspace){
+  return _min_x[(halfspace + 1) / 2];   // indices are 0 for hs=-1 and 0 for hs=1
+}
+
+/**
+ * @brief Returns the maximum x value for one of this HexPlane's halfspaces. 
+ * If the halfspace is from the side of the hexagon, additional limits are applied.
+ * @param halfspace the halfspace of the HexPlane to consider
+ * @return the maximum x value
+ */
+double HexPlane::getMaxX(int halfspace){
+  return _max_x[(halfspace + 1) / 2];   // indices are 0 for hs=-1 and 0 for hs=1
+}
+
+/**
+ * @brief Returns the minimum y value for one of this HexPlane's halfspaces. 
+ * If the halfspace is from the side of the hexagon, additional limits are applied.
+ * @param halfspace the halfspace of the HexPlane to consider
+ * @return the minimum y value
+ */
+double HexPlane::getMinY(int halfspace){
+  return _min_y[(halfspace + 1) / 2];   // indices are 0 for hs=-1 and 0 for hs=1
+}
+
+/**
+ * @brief Returns the maximum y value for one of this HexPlane's halfspaces. 
+ * If the halfspace is from the side of the hexagon, additional limits are applied.
+ * @param halfspace the halfspace of the HexPlane to consider
+ * @return the maximum y value
+ */
+double HexPlane::getMaxY(int halfspace){
+  return _max_y[(halfspace + 1) / 2];   // indices are 0 for hs=-1 and 0 for hs=1
+}
 
 /**
  * @brief constructor.

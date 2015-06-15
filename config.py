@@ -185,7 +185,7 @@ class configuration:
   # A dictionary of the compiler flags to use for each compiler type
   compiler_flags = dict()
 
-  compiler_flags['gcc'] = ['-c', '-O3', '-ffast-math', '-fopenmp',
+  compiler_flags['gcc'] = ['-c', '-Wall','-O1', '-ffast-math', '-fopenmp',
                            '-std=c++0x', '-fpic']
   compiler_flags['icpc'] =['-c', '-O3', '-fast', '--ccache-skip', '-openmp',
                            '-xhost', '-std=c++0x', '-fpic', '--ccache-skip',

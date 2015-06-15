@@ -306,13 +306,23 @@ private:
     
     /** Number of the Plane on the Hexagon */
     /** 0 means top left, 1 - left and so on...*/
-    size_t _hex_id;
+    size_t _side_num;
     
-    // TODO: possibly add getMinX(Y)/MaxX(Y): corresponding to the 
-    //      section of the plane(lane) that is part of the Hexagon
+    /** The two points, fixing the plane */
+    Point _vertex[2];
+    
+    /** Min and Max coords if applicable for each halfspace */
+    /** 0 corresponds to halfspace -1, and 1 to halfspace 1*/
+    double _min_x[2], _max_x[2], _min_y[2], _max_y[2];
+
 public:
   HexPlane(const double x, const double y, const double radius, 
            const size_t hex_id, const int id=0, const char* name="");
+  double getMinX(int halfspace);
+  double getMaxX(int halfspace);
+  double getMinY(int halfspace);
+  double getMaxY(int halfspace);
+  
 };
 
 /**

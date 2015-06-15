@@ -17,7 +17,7 @@ num_azim = options.getNumAzimAngles()
 tolerance = options.getTolerance()
 max_iters = options.getMaxIterations()
 
-log.set_log_level('NORMAL')
+log.set_log_level('DEBUG')
 
 
 ###############################################################################
@@ -35,26 +35,26 @@ materials = materialize.materialize('../c5g7-materials.h5')
 
 log.py_printf('NORMAL', 'Creating surfaces...')
 
-pin = Circle(x=0.0, y=0.0, radius=1.0, name='pin')
+# fuel surface
+fuel_srf = Circle(x=0.0, y=0.0, radius=1.0, name='fuel surface')
 
-#core = Circle(x=0.0, y=0.0, radius=3.0, name='core')
-core0 = HexPlane(x=0.0, y=0.0, radius=2.0, hex_id=0, name='core0')
-core1 = HexPlane(x=0.0, y=0.0, radius=2.0, hex_id=1, name='core1')
-core2 = HexPlane(x=0.0, y=0.0, radius=2.0, hex_id=2, name='core2')
-core3 = HexPlane(x=0.0, y=0.0, radius=2.0, hex_id=3, name='core3')
-core4 = HexPlane(x=0.0, y=0.0, radius=2.0, hex_id=4, name='core4')
-core5 = HexPlane(x=0.0, y=0.0, radius=2.0, hex_id=5, name='core5')
+# moderator surfaces
+mod0 = HexPlane(x=0.0, y=0.0, radius=2.0, hex_id=0, name='top left moderator surface')
+mod1 = HexPlane(x=0.0, y=0.0, radius=2.0, hex_id=1, name='left moderator surface')
+mod2 = HexPlane(x=0.0, y=0.0, radius=2.0, hex_id=2, name='bottom left moderator surface')
+mod3 = HexPlane(x=0.0, y=0.0, radius=2.0, hex_id=3, name='bottom right moderator surface')
+mod4 = HexPlane(x=0.0, y=0.0, radius=2.0, hex_id=4, name='right moderator surface')
+mod5 = HexPlane(x=0.0, y=0.0, radius=2.0, hex_id=5, name='top right moderator surface')
 
-left = XPlane(x=-10.0, name='left')
-right = XPlane(x=10.0, name='right')
-top = YPlane(y=10.0, name='top')
-bottom = YPlane(y=-10.0, name='bottom')
+# bounding surfaces
+a = 10.0
+left  = XPlane(x=-a, name='left')
+right = XPlane(x= a, name='right')
+top   = YPlane(y=-a, name='top')
+bot   = YPlane(y= a, name='bottom')
+boundaries = [left, right, top, bot]
 
-left.setBoundaryType(VACUUM)
-right.setBoundaryType(VACUUM)
-top.setBoundaryType(VACUUM)
-bottom.setBoundaryType(VACUUM)
-
+for boundary in boundaries: boundary.setBoundaryType(REFLECTIVE)
 
 ###############################################################################
 #############################   Creating Cells   ##############################
@@ -64,30 +64,25 @@ log.py_printf('NORMAL', 'Creating cells...')
 
 fuel = CellBasic(name='fuel')
 fuel.setMaterial(materials['UO2'])
-fuel.addSurface(halfspace=-1, surface=pin)
+fuel.addSurface(halfspace=-1, surface=fuel_srf)
+
+
+root_cell = CellFill(name='root cell')
+root_cell.addSurface(halfspace=+1, surface=boundaries[0])
+root_cell.addSurface(halfspace=-1, surface=boundaries[1])
+root_cell.addSurface(halfspace=+1, surface=boundaries[2])
+root_cell.addSurface(halfspace=-1, surface=boundaries[3])
+
 
 moderator = CellBasic(name='moderator')
 moderator.setMaterial(materials['Water'])
-moderator.addSurface(halfspace=+1, surface=pin)
-moderator.addSurface(halfspace=-1, surface=core0)
-moderator.addSurface(halfspace=+1, surface=core1)
-moderator.addSurface(halfspace=-1, surface=core2)
-moderator.addSurface(halfspace=+1, surface=core3)
-moderator.addSurface(halfspace=-1, surface=core4)
-moderator.addSurface(halfspace=+1, surface=core5)
-
-empty = CellBasic(name='empty')
-empty.setMaterial(materials['Water'])
-empty.addSurface(halfspace=+1, surface=core0)
-empty.addSurface(halfspace=-1, surface=core1)
-empty.addSurface(halfspace=+1, surface=core2)
-empty.addSurface(halfspace=-1, surface=core3)
-empty.addSurface(halfspace=+1, surface=core4)
-empty.addSurface(halfspace=-1, surface=core5)
-empty.addSurface(halfspace=+1, surface=left)
-empty.addSurface(halfspace=-1, surface=right)
-empty.addSurface(halfspace=+1, surface=bottom)
-empty.addSurface(halfspace=-1, surface=top)
+moderator.addSurface(halfspace=+1, surface=fuel_srf)
+moderator.addSurface(halfspace=-1, surface=mod0)
+moderator.addSurface(halfspace=+1, surface=mod1)
+moderator.addSurface(halfspace=-1, surface=mod2)
+moderator.addSurface(halfspace=+1, surface=mod3)
+moderator.addSurface(halfspace=-1, surface=mod4)
+moderator.addSurface(halfspace=+1, surface=mod5)
 
 
 ###############################################################################
@@ -96,10 +91,24 @@ empty.addSurface(halfspace=-1, surface=top)
 
 log.py_printf('NORMAL', 'Creating universes...')
 
+pin_universe = Universe(name='fuel pin')
+pin_universe.addCell(fuel)
+pin_universe.addCell(moderator)
+
 root_universe = Universe(name='root universe')
-root_universe.addCell(fuel)
-root_universe.addCell(moderator)
-root_universe.addCell(empty)
+root_universe.addCell(root_cell)
+
+
+###############################################################################
+##########################   Creating Lattices   ##########################
+###############################################################################
+
+log.py_printf('NORMAL', 'Creating lattices...')
+pin = Lattice(name='trivial one cell lattice')
+pin.setWidth(width_x=a/2, width_y=a/2)
+pin.setUniverses([pin_universe])
+
+root_cell.setFill(pin)
 
 
 ###############################################################################
