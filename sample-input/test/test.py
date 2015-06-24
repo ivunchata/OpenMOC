@@ -11,13 +11,14 @@ from openmoc.options import Options
 
 options = Options()
 
-num_threads = options.getNumThreads()
+num_threads = 1 #options.getNumThreads()
 track_spacing = options.getTrackSpacing()
 num_azim = options.getNumAzimAngles()
 tolerance = options.getTolerance()
 max_iters = options.getMaxIterations()
 
-log.set_log_level('DEBUG')
+#log.set_log_level('DEBUG')
+log.set_log_level('NORMAL')
 
 
 ###############################################################################
@@ -31,93 +32,79 @@ materials = materialize.materialize('../c5g7-materials.h5')
 ###############################################################################
 ###########################   Creating Surfaces   #############################
 ###############################################################################
-a = 10.0
 
 log.py_printf('NORMAL', 'Creating surfaces...')
+a=10.0
+circle = Circle(x=0.0, y=0.0, radius=a/20, name='fuel radius')
 
-# fuel surface
-fuel_srf = Circle(x=0.0, y=0.0, radius=a/40, name='fuel surface')
+# small cell within the root
+sleft = XPlane(x=-a/2, name='sleft')
+sright = XPlane(x=a/2, name='sright')
+sbot = YPlane(y=-a/2, name='sbottom')
+stop = YPlane(y=a/2, name='stop')
 
-# moderator surfaces
-mod0 = HexPlane(x=0.0, y=0.0, radius=a/10, hex_id=0, name='top left moderator surface')
-mod1 = HexPlane(x=0.0, y=0.0, radius=a/10, hex_id=1, name='left moderator surface')
-mod2 = HexPlane(x=0.0, y=0.0, radius=a/10, hex_id=2, name='bottom left moderator surface')
-mod3 = HexPlane(x=0.0, y=0.0, radius=a/10, hex_id=3, name='bottom right moderator surface')
-mod4 = HexPlane(x=0.0, y=0.0, radius=a/10, hex_id=4, name='right moderator surface')
-mod5 = HexPlane(x=0.0, y=0.0, radius=a/10, hex_id=5, name='top right moderator surface')
+# root cell/universe boundaries
+left = XPlane(x=-a, name='left')
+right = XPlane(x=a, name='right')
+bot = YPlane(y=-a, name='bottom')
+top = YPlane(y=a, name='top')
+left.setBoundaryType(openmoc.REFLECTIVE)
+right.setBoundaryType(openmoc.REFLECTIVE)
+bot.setBoundaryType(openmoc.REFLECTIVE)
+top.setBoundaryType(openmoc.REFLECTIVE)
 
-# test surfaces
-sleft  = XPlane(x=-a/2, name='sleft')
-sright = XPlane(x= a/2, name='sright')
-stop   = YPlane(y= a/2, name='stop')
-sbot   = YPlane(y=-a/2, name='sbottom')
+# Retrieve the fuel and moderator materials
+uo2 = materials['UO2']
+water = materials['Water']
+gt = materials['Guide Tube']
 
-# bounding surfaces
-left  = XPlane(x=-a, name='left')
-right = XPlane(x= a, name='right')
-top   = YPlane(y= a, name='top')
-bot   = YPlane(y=-a, name='bottom')
-boundaries = [left, right, bot, top]
+# Initialize the cells 
+fuel = CellBasic(name='fuel cell')
+moderator = CellBasic(name='moderator cell')
+remainder = CellBasic(name='wut?')
+root_cell = CellFill(name='root cell')
 
-for boundary in boundaries: boundary.setBoundaryType(REFLECTIVE)
+# set materials
+fuel.setMaterial(uo2)
+moderator.setMaterial(water)
+remainder.setMaterial(uo2)
 
-###############################################################################
-#############################   Creating Cells   ##############################
-###############################################################################
+# add surfaces
+fuel.addSurface(halfspace=-1, surface=circle)
 
-log.py_printf('NORMAL', 'Creating cells...')
-
-fuel = CellBasic(name='fuel')
-fuel.setMaterial(materials['UO2'])
-fuel.addSurface(halfspace=-1, surface=fuel_srf)
-
-moderator = CellBasic(name='moderator')
-moderator.setMaterial(materials['Water'])
-moderator.addSurface(halfspace=+1, surface=fuel_srf)
+moderator.addSurface(halfspace=+1, surface=circle)
 moderator.addSurface(halfspace=+1, surface=sleft)
 moderator.addSurface(halfspace=-1, surface=sright)
 moderator.addSurface(halfspace=+1, surface=sbot)
 moderator.addSurface(halfspace=-1, surface=stop)
-# moderator.addSurface(halfspace=-1, surface=mod0)
-# moderator.addSurface(halfspace=+1, surface=mod1)
-# moderator.addSurface(halfspace=-1, surface=mod2)
-# moderator.addSurface(halfspace=+1, surface=mod3)
-# moderator.addSurface(halfspace=-1, surface=mod4)
-# moderator.addSurface(halfspace=+1, surface=mod5)
+moderator.printString()
 
-root_cell = CellFill(name='root cell')
+remainder.addSurface(halfspace=-1, surface=sleft)
+remainder.addSurface(halfspace=+1, surface=sright)
+remainder.addSurface(halfspace=-1, surface=sbot)
+remainder.addSurface(halfspace=+1, surface=stop)
+remainder.addSurface(halfspace=+1, surface=left)
+remainder.addSurface(halfspace=-1, surface=right)
+remainder.addSurface(halfspace=+1, surface=bot)
+remainder.addSurface(halfspace=-1, surface=top)
+remainder.printString()
 
+# Add the bounding planar surfaces to the root cell
+root_cell.addSurface(halfspace=+1, surface=left)
+root_cell.addSurface(halfspace=-1, surface=right)
+root_cell.addSurface(halfspace=+1, surface=bot)
+root_cell.addSurface(halfspace=-1, surface=top)
 
-###############################################################################
-###########################   Creating Universes   ############################
-###############################################################################
+# Initialize a universes 
+pin_univ = Universe(name='pin universe')
+root_univ = Universe(name='root univ')
 
-log.py_printf('NORMAL', 'Creating universes...')
-
-pin_universe = Universe(name='fuel pin')
-pin_universe.addCell(fuel)
-pin_universe.addCell(moderator)
-
-root_universe = Universe(name='root universe')
-root_universe.addCell(root_cell)
-
-
-###############################################################################
-##########################   Creating Lattices   ##########################
-###############################################################################
-
-log.py_printf('NORMAL', 'Creating lattices...')
-# pin = Lattice(name='trivial one cell lattice')
-# pin.setWidth(width_x=a/4, width_y=a/4)
-# pin.setUniverses([pin_universe])
-# root_cell.setFill(pin)
-
-root_cell.setFill(pin_universe)
-
-root_cell.addSurface(halfspace=+1, surface=boundaries[0]) # left
-root_cell.addSurface(halfspace=-1, surface=boundaries[1]) # right
-root_cell.addSurface(halfspace=+1, surface=boundaries[2]) # bot
-root_cell.addSurface(halfspace=-1, surface=boundaries[3]) # top
+# Add each cell to the universe
+pin_univ.addCell(fuel)
+pin_univ.addCell(moderator)
+pin_univ.addCell(remainder)
+root_univ.addCell(root_cell)
+root_cell.setFill(pin_univ)
 
 
 ###############################################################################
@@ -127,7 +114,7 @@ root_cell.addSurface(halfspace=-1, surface=boundaries[3]) # top
 log.py_printf('NORMAL', 'Creating geometry...')
 
 geometry = Geometry()
-geometry.setRootUniverse(root_universe)
+geometry.setRootUniverse(root_univ)
 geometry.initializeFlatSourceRegions()
 
 
@@ -167,3 +154,4 @@ plotter.plot_cells(geometry, gridsize=500)
 #plotter.plot_fluxes(geometry, solver, energy_groups=[1,2,3,4,5,6,7])
 
 log.py_printf('TITLE', 'Finished')
+

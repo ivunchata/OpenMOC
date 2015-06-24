@@ -14,7 +14,7 @@ options = Options()
 num_threads = options.getNumThreads()
 track_spacing = options.getTrackSpacing() / 2
 num_azim = options.getNumAzimAngles()
-tolerance = options.getTolerance()
+tolerance = options.getTolerance()*10
 max_iters = options.getMaxIterations()
 
 log.set_log_level('NORMAL')
@@ -113,15 +113,16 @@ log.py_printf('NORMAL', 'Creating simple 4 x 4 lattice...')
 
 lattice = Lattice(name='5x5 lattice')
 lattice.setWidth(width_x=a/3, width_y=a/3)
-#lattice.setNumX(5);
-#lattice.setNumY(4);
+lattice.setNumX(2);
+lattice.setNumY(2);
 #lattice.setOffset(a/5, a/5)
-lattice.setUniverses([[pin1, pin2, pin1, pin2, pin1, pin2],
-                      [pin2, pin3, pin2, pin3, pin2, pin3],
-                      [pin1, pin2, pin1, pin2, pin1, pin2],
-                      [pin2, pin3, pin2, pin3, pin2, pin3],
-                      [pin1, pin3, pin1, pin3, pin1, pin2],
-                      [pin2, pin3, pin2, pin3, pin2, pin3]])
+# lattice.setUniverses([[pin1, pin2, pin1, pin2, pin1, pin2],
+#                       [pin2, pin3, pin2, pin3, pin2, pin3],
+#                       [pin1, pin2, pin1, pin2, pin1, pin2],
+#                       [pin2, pin3, pin2, pin3, pin2, pin3],
+#                       [pin1, pin3, pin1, pin3, pin1, pin2],
+#                       [pin2, pin3, pin2, pin3, pin2, pin3]])
+lattice.setUniverses([[pin1, pin2], [pin2, pin3]])
 root_cell.setFill(lattice)
 
 
