@@ -640,11 +640,14 @@ HexPlane::HexPlane(const double x, const double y, const double radius,
   _vertex[1].setY(_vertex[1].getY() + _center.getY());
   
   // calculate the Plane coefficients
-  _A = _vertex[1].getY() - _vertex[0].getY();
-  _B = _vertex[0].getX() - _vertex[1].getX();
-  _C = _vertex[0].getY() * _vertex[1].getX() - _vertex[0].getX() * _vertex[1].getY();
+  _A = -(_vertex[1].getY() - _vertex[0].getY());
+  _B = -(_vertex[0].getX() - _vertex[1].getX());
+  _C = - (_vertex[0].getY() * _vertex[1].getX() - _vertex[0].getX() * _vertex[1].getY());
   
-
+  std::cout << "Ax: " << std::setprecision(3) << _vertex[0].getX() << " Ay: " << std::setprecision(3) << _vertex[0].getY() << std::endl;
+  std::cout << "Bx: " << std::setprecision(3) << _vertex[1].getX() << " By: " << std::setprecision(3) << _vertex[1].getY() << std::endl;
+  std::cout << "A:  " << std::setprecision(3) << _A                << " B:  " << std::setprecision(3) << _B << std::setprecision(3) << " C:  " << std::setprecision(3) << _C << std::endl;
+  std::cout << "------------------------------" << std::endl;
   // determine min and max points
   _min_x[0] = _min_x[1] = - std::numeric_limits<double>::infinity();
   _max_x[0] = _max_x[1] = + std::numeric_limits<double>::infinity();

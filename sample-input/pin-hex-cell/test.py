@@ -17,7 +17,8 @@ num_azim = options.getNumAzimAngles()
 tolerance = options.getTolerance()
 max_iters = options.getMaxIterations()
 
-log.set_log_level('DEBUG')
+#log.set_log_level('DEBUG')
+log.set_log_level('NORMAL')
 
 
 ###############################################################################
@@ -33,54 +34,105 @@ materials = materialize.materialize('../c5g7-materials.h5')
 ###############################################################################
 
 log.py_printf('NORMAL', 'Creating surfaces...')
+a=10.0
 
-circle = Circle(x=0.0, y=0.0, radius=0.45, name='fuel radius')
+fuel = Circle(x=0.0, y=0.0, radius=a/10, name='fuel surface')
 
-left = XPlane(x=-2.52, name='left')
-right = XPlane(x=2.52, name='right')
-bot = YPlane(y=-2.52, name='bottom')
-top = YPlane(y=2.52, name='top')
+# root cell/universe boundaries
+root_left = XPlane(x=-a, name='outer left')
+root_right = XPlane(x=a, name='outer right')
+root_bot = YPlane(y=-a, name='outer bottom')
+root_top = YPlane(y=a, name='outer top')
+root_left.setBoundaryType(openmoc.REFLECTIVE)
+root_right.setBoundaryType(openmoc.REFLECTIVE)
+root_bot.setBoundaryType(openmoc.REFLECTIVE)
+root_top.setBoundaryType(openmoc.REFLECTIVE)
 
-left.setBoundaryType(openmoc.REFLECTIVE)
-right.setBoundaryType(openmoc.REFLECTIVE)
-bot.setBoundaryType(openmoc.REFLECTIVE)
-top.setBoundaryType(openmoc.REFLECTIVE)
+# moderator surfaces and cells
+mod_surface = []
+for i in range(6):
+    mod_surface.append(HexPlane(x=0.0, y=0.0, radius=a/2, hex_id=i, name='Hexagonal surface no. ' + str(i)))
 
-# Retrieve the fuel and moderator materials
+# helper surfaces
+mid_axis = XPlane(x=0.0, name='vertical trough the hexagon\'s center')
+
+# Retrieve the materials
 uo2 = materials['UO2']
 water = materials['Water']
+gt = materials['Guide Tube']
 
-# Initialize the cells for the fuel pin and moderator
-# with optional string names
-fuel = CellBasic(name='fuel cell')
-moderator = CellBasic(name='moderator cell')
 
-# Assign the appropriate materials to fill each cell
-fuel.setMaterial(uo2)
-moderator.setMaterial(water)
+# setup cells
+pin_fuel = CellBasic(name='pin cell fuel')
+pin_mod = CellBasic(name='pin cell moderator')
 
-# Add the circle surface to each cell
-fuel.addSurface(halfspace=-1, surface=circle)
-moderator.addSurface(halfspace=+1, surface=circle)
+mod_cell = []
+for i in range(6):
+    mod_cell.append(CellBasic(name='Surrounding cell no. '  + str(i)))
 
-# Initialize a universe with an optional string name
+root_cell = CellFill(name='root cell')
+
+# set materials
+pin_fuel.setMaterial(uo2)
+pin_mod.setMaterial(water)
+for i in range(6):
+    mod_cell[i].setMaterial(water)
+
+# attach surfaces
+pin_fuel.addSurface(halfspace=-1, surface=fuel)
+
+pin_mod.addSurface(halfspace=+1, surface=fuel)
+for i in range(6):
+    sign_one = pow(-1, i+1)
+    pin_mod.addSurface(halfspace=pow(-1, i+1), surface=mod_surface[i])
+
+mod_cell[0].addSurface(halfspace=+1, surface=mod_surface[1])
+mod_cell[0].addSurface(halfspace=-1, surface=mid_axis)
+mod_cell[0].addSurface(halfspace=+1, surface=mod_surface[0])
+mod_cell[0].addSurface(halfspace=-1, surface=root_top)
+
+mod_cell[1].addSurface(halfspace=+1, surface=root_left)
+mod_cell[1].addSurface(halfspace=-1, surface=mod_surface[1])
+mod_cell[1].addSurface(halfspace=+1, surface=root_bot)
+mod_cell[1].addSurface(halfspace=-1, surface=root_top)
+
+mod_cell[2].addSurface(halfspace=+1, surface=mod_surface[1])
+mod_cell[2].addSurface(halfspace=-1, surface=mid_axis)
+mod_cell[2].addSurface(halfspace=+1, surface=root_bot)
+mod_cell[2].addSurface(halfspace=-1, surface=mod_surface[2])
+
+mod_cell[3].addSurface(halfspace=+1, surface=mid_axis)
+mod_cell[3].addSurface(halfspace=-1, surface=mod_surface[4])
+mod_cell[3].addSurface(halfspace=+1, surface=root_bot)
+mod_cell[3].addSurface(halfspace=-1, surface=mod_surface[3])
+
+mod_cell[1].addSurface(halfspace=+1, surface=mod_surface[4])
+mod_cell[1].addSurface(halfspace=-1, surface=root_right)
+mod_cell[1].addSurface(halfspace=+1, surface=root_bot)
+mod_cell[1].addSurface(halfspace=-1, surface=root_top)
+
+mod_cell[5].addSurface(halfspace=+1, surface=mid_axis)
+mod_cell[5].addSurface(halfspace=-1, surface=mod_surface[4])
+mod_cell[5].addSurface(halfspace=+1, surface=mod_surface[5])
+mod_cell[5].addSurface(halfspace=-1, surface=root_top)
+
+# Add the bounding planar surfaces to the root cell
+root_cell.addSurface(halfspace=+1, surface=root_left)
+root_cell.addSurface(halfspace=-1, surface=root_right)
+root_cell.addSurface(halfspace=+1, surface=root_bot)
+root_cell.addSurface(halfspace=-1, surface=root_top)
+
+# Initialize a universes
 pin_univ = Universe(name='pin universe')
 root_univ = Universe(name='root univ')
 
 # Add each cell to the universe
-pin_univ.addCell(fuel)
-pin_univ.addCell(moderator)
-
-root_cell = CellFill(name='root cell')
-root_cell.setFill(pin_univ)
-
-# Add the bounding planar surfaces to the root cell
-root_cell.addSurface(halfspace=+1, surface=left)
-root_cell.addSurface(halfspace=-1, surface=right)
-root_cell.addSurface(halfspace=+1, surface=bot)
-root_cell.addSurface(halfspace=-1, surface=top)
+for i in range(6):
+    pin_univ.addCell(mod_cell[i])
 
 root_univ.addCell(root_cell)
+root_cell.setFill(pin_univ)
+
 
 ###############################################################################
 ##########################   Creating the Geometry   ##########################
