@@ -141,3 +141,4 @@ sphinx/
 # *~
 *.swp
 
+/sample-input/pin-hex-cell/nbproject/private/

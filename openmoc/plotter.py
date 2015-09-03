@@ -370,8 +370,11 @@ def plot_cells(geometry, gridsize=250, xlim=None, ylim=None):
       # If we did not find a Cell for this region, use a -1 "bad" number color
       if cell is None:
         surface[j][i] = -1
+        print "{}, {}".format(x, y)
       else:
         surface[j][i] = cell.getId()
+        if surface[j][i] == -1:
+          print "Cell exists, but ID=-1: ({}, {})".format(x, y)
 
   # Get the number of Material Cells in the Geometry
   material_cells = geometry.getAllMaterialCells()

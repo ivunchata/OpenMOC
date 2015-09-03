@@ -58,13 +58,14 @@ mid_axis = XPlane(x=0.0, name='vertical trough the hexagon\'s center')
 
 # Retrieve the materials
 uo2 = materials['UO2']
+mox = materials['MOX-4.3%']
 water = materials['Water']
 gt = materials['Guide Tube']
 
 
 # setup cells
 pin_fuel = CellBasic(name='pin cell fuel')
-pin_mod = CellBasic(name='pin cell moderator')
+#pin_mod = CellBasic(name='pin cell moderator')
 
 mod_cell = []
 for i in range(6):
@@ -74,21 +75,22 @@ root_cell = CellFill(name='root cell')
 
 # set materials
 pin_fuel.setMaterial(uo2)
-pin_mod.setMaterial(water)
+#pin_mod.setMaterial(water)
 for i in range(6):
     mod_cell[i].setMaterial(water)
 
 # attach surfaces
-pin_fuel.addSurface(halfspace=-1, surface=fuel)
-
-pin_mod.addSurface(halfspace=+1, surface=fuel)
+#pin_fuel.addSurface(halfspace=+1, surface=fuel)
 for i in range(6):
-    sign_one = pow(-1, i+1)
-    pin_mod.addSurface(halfspace=pow(-1, i+1), surface=mod_surface[i])
+    pin_fuel.addSurface(halfspace=+1, surface=mod_surface[i])
+
+#pin_mod.addSurface(halfspace=-1, surface=fuel)
+#for i in range(6):
+#    pin_mod.addSurface(halfspace=+1, surface=mod_surface[i])
 
 mod_cell[0].addSurface(halfspace=+1, surface=mod_surface[1])
 mod_cell[0].addSurface(halfspace=-1, surface=mid_axis)
-mod_cell[0].addSurface(halfspace=+1, surface=mod_surface[0])
+mod_cell[0].addSurface(halfspace=-1, surface=mod_surface[0])
 mod_cell[0].addSurface(halfspace=-1, surface=root_top)
 
 mod_cell[1].addSurface(halfspace=+1, surface=root_left)
@@ -102,18 +104,18 @@ mod_cell[2].addSurface(halfspace=+1, surface=root_bot)
 mod_cell[2].addSurface(halfspace=-1, surface=mod_surface[2])
 
 mod_cell[3].addSurface(halfspace=+1, surface=mid_axis)
-mod_cell[3].addSurface(halfspace=-1, surface=mod_surface[4])
+mod_cell[3].addSurface(halfspace=+1, surface=mod_surface[4])
 mod_cell[3].addSurface(halfspace=+1, surface=root_bot)
 mod_cell[3].addSurface(halfspace=-1, surface=mod_surface[3])
 
-mod_cell[1].addSurface(halfspace=+1, surface=mod_surface[4])
-mod_cell[1].addSurface(halfspace=-1, surface=root_right)
-mod_cell[1].addSurface(halfspace=+1, surface=root_bot)
-mod_cell[1].addSurface(halfspace=-1, surface=root_top)
+mod_cell[4].addSurface(halfspace=-1, surface=mod_surface[4])
+mod_cell[4].addSurface(halfspace=-1, surface=root_right)
+mod_cell[4].addSurface(halfspace=+1, surface=root_bot)
+mod_cell[4].addSurface(halfspace=-1, surface=root_top)
 
 mod_cell[5].addSurface(halfspace=+1, surface=mid_axis)
-mod_cell[5].addSurface(halfspace=-1, surface=mod_surface[4])
-mod_cell[5].addSurface(halfspace=+1, surface=mod_surface[5])
+mod_cell[5].addSurface(halfspace=+1, surface=mod_surface[4])
+mod_cell[5].addSurface(halfspace=-1, surface=mod_surface[5])
 mod_cell[5].addSurface(halfspace=-1, surface=root_top)
 
 # Add the bounding planar surfaces to the root cell
@@ -127,6 +129,8 @@ pin_univ = Universe(name='pin universe')
 root_univ = Universe(name='root univ')
 
 # Add each cell to the universe
+pin_univ.addCell(pin_fuel)
+#pin_univ.addCell(pin_mod)
 for i in range(6):
     pin_univ.addCell(mod_cell[i])
 
@@ -175,7 +179,7 @@ log.py_printf('NORMAL', 'Plotting data...')
 
 #plotter.plot_tracks(track_generator)
 #plotter.plot_segments(track_generator)
-#plotter.plot_materials(geometry, gridsize=500)
+plotter.plot_materials(geometry, gridsize=500)
 plotter.plot_cells(geometry, gridsize=500)
 #plotter.plot_flat_source_regions(geometry, gridsize=500)
 #plotter.plot_fluxes(geometry, solver, energy_groups=[1,2,3,4,5,6,7])
