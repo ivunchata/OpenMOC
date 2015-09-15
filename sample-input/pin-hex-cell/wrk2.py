@@ -36,10 +36,7 @@ materials = materialize.materialize('../c5g7-materials.h5')
 log.py_printf('NORMAL', 'Creating surfaces...')
 a=10.0
 
-#fuel = Hexagon(x=0.0, y=0.0, radius=a/10, name='fuel surface')
 fuel = Circle(x=0.0, y=0.0, radius=a/10, name='fuel surface')
-
-
 
 # root cell/universe boundaries
 root_left = XPlane(x=-a, name='outer left')

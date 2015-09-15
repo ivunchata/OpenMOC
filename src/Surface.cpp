@@ -184,11 +184,20 @@ void Surface::printString() {
 Plane::Plane(const double A, const double B,
              const double C, const int id, const char* name):
   Surface(id, name) {
-
   _surface_type = PLANE;
   _A = A;
   _B = B;
   _C = C;
+}
+
+Plane::Plane(const Plane &p)
+{
+  _id = p._id;
+  _name = p._name;
+  _surface_type = PLANE;
+  _A = p._A;
+  _B = p._B;
+  _C = p._C;
 }
 
 
@@ -343,7 +352,7 @@ inline int Plane::intersection(Point* point, double angle, Point* points) {
 
 /**
  * @brief Converts this Plane's attributes to a character array.
- * @details The character array returned conatins the type of Plane (ie,
+ * @details The character array returned contains the type of Plane (ie,
  *          PLANE) and the A, B, and C coefficients in the
  *          quadratic Surface equation.
  * @return a character array of this Plane's attributes
@@ -644,10 +653,10 @@ HexPlane::HexPlane(const double x, const double y, const double radius,
   _B = -(_vertex[0].getX() - _vertex[1].getX());
   _C = -(_vertex[0].getY() * _vertex[1].getX() - _vertex[0].getX() * _vertex[1].getY());
   
-  std::cout << "Ax: " << std::setprecision(3) << _vertex[0].getX() << " Ay: " << std::setprecision(3) << _vertex[0].getY() << std::endl;
-  std::cout << "Bx: " << std::setprecision(3) << _vertex[1].getX() << " By: " << std::setprecision(3) << _vertex[1].getY() << std::endl;
-  std::cout << "A:  " << std::setprecision(3) << _A                << " B:  " << std::setprecision(3) << _B << std::setprecision(3) << " C:  " << std::setprecision(3) << _C << std::endl;
-  std::cout << "------------------------------" << std::endl;
+//  std::cout << "Ax: " << std::setprecision(3) << _vertex[0].getX() << " Ay: " << std::setprecision(3) << _vertex[0].getY() << std::endl;
+//  std::cout << "Bx: " << std::setprecision(3) << _vertex[1].getX() << " By: " << std::setprecision(3) << _vertex[1].getY() << std::endl;
+//  std::cout << "A:  " << std::setprecision(3) << _A                << " B:  " << std::setprecision(3) << _B << std::setprecision(3) << " C:  " << std::setprecision(3) << _C << std::endl;
+//  std::cout << "------------------------------" << std::endl;
   // determine min and max points
   _min_x[0] = _min_x[1] = - std::numeric_limits<double>::infinity();
   _max_x[0] = _max_x[1] = + std::numeric_limits<double>::infinity();
@@ -983,4 +992,193 @@ std::string Circle::toString() {
          << ", radius = " << _radius;
 
     return string.str();
+}
+
+/**
+ * @brief constructor.
+ * @param x the x-coordinate of the Hexagon center
+ * @param y the y-coordinate of the Hexagon center
+ * @param outer radius the radius of the Hexagon
+ * @param id the optional Surface ID
+ * @param name the optional Surface name
+ */
+Hexagon::Hexagon(const double x, const double y,
+               const double radius, const int id, const char* name):
+  Surface(id, name) {
+
+  _surface_type = HEXAGON;
+  _radius = radius;
+  _iradius = _radius * sqrt(3) * 0.5;
+  _center.setX(x);
+  _center.setY(y);
+  
+  // The linear coefficients of the Plane(line) are calculated from the two
+  // vertices it passes trough.
+  Point t;  // the top vertex
+  t.setX(0);
+  t.setY(_radius);
+  double tmp_angle = M_PI * 2. / _nsides;
+  
+  for (size_t i=0 ; i < _nsides ; ++i)
+  {
+    double tmp_ang = i * tmp_angle;  // work angle
+    Point tmp_a, tmp_b;                       // work points, the plane will be passing trough them.
+    // rotate the two points to their respective positions
+    tmp_a.setX(t.getX() * cos(tmp_ang) - t.getY() * sin(tmp_ang));
+    tmp_a.setY(t.getX() * sin(tmp_ang) + t.getY() * cos(tmp_ang));
+    tmp_ang += tmp_angle;            // point tmp_b is 60 degrees further from tmp_a
+    tmp_b.setX(t.getX() * cos(tmp_ang) - t.getY() * sin(tmp_ang));
+    tmp_b.setY(t.getX() * sin(tmp_ang) + t.getY() * cos(tmp_ang));
+
+    // shift the points to the center
+    tmp_a.setX(tmp_a.getX() + _center.getX());
+    tmp_a.setY(tmp_a.getY() + _center.getY());
+    tmp_b.setX(tmp_b.getX() + _center.getX());
+    tmp_b.setY(tmp_b.getY() + _center.getY());
+
+    // calculate the Plane coefficients
+    double A, B, C;
+    A = tmp_b.getY() - tmp_a.getY();
+    B = tmp_a.getX() - tmp_b.getX();
+    C = tmp_a.getY() * tmp_b.getX() - tmp_a.getX() * tmp_b.getY();
+
+    _sides.emplace_back(A, B, C, -1, "");
+  }
+  std::cout << this->toString() << std::endl;
+}
+
+Hexagon::~Hexagon() {
+  _sides.clear();
+}
+
+/**
+ * @brief Return the x-coordinate of the Hexagon's center Point.
+ * @return the x-coordinate of the Hexagon center
+ */
+double Hexagon::getX0() {
+  return _center.getX();
+}
+
+
+/**
+ * @brief Return the y-coordinate of the Hexagon's center Point.
+ * @return the y-coordinate of the Hexagon center
+ */
+double Hexagon::getY0() {
+  return _center.getY();
+}
+
+
+/**
+ * @brief Returns the minimum x value for one of this Hexagon's halfspaces.
+ * @param halfspace the halfspace of the Hexagon to consider
+ * @return the minimum x value
+ */
+double Hexagon::getMinX(int halfspace){
+  if (halfspace == -1)
+    return _center.getX() - _iradius;
+  else
+    return -std::numeric_limits<double>::infinity();
+}
+
+
+/**
+ * @brief Returns the maximum x value for one of this Hexagon's halfspaces.
+ * @param halfspace the halfspace of the Hexagon to consider
+ * @return the maximum x value
+ */
+double Hexagon::getMaxX(int halfspace){
+  if (halfspace == -1)
+    return _center.getX() + _iradius;
+  else
+    return std::numeric_limits<double>::infinity();
+}
+
+
+/**
+ * @brief Returns the minimum y value for one of this Hexagon's halfspaces.
+ * @param halfspace the halfspace of the Hexagon to consider
+ * @return the minimum y value
+ */
+double Hexagon::getMinY(int halfspace){
+  if (halfspace == -1)
+    return _center.getY() - _radius;
+  else
+    return -std::numeric_limits<double>::infinity();
+}
+
+
+/**
+ * @brief Returns the maximum y value for one of this Hexagon's halfspaces.
+ * @param halfspace the halfspace of the Hexagon to consider
+ * @return the maximum y value
+ */
+double Hexagon::getMaxY(int halfspace){
+  if (halfspace == -1)
+    return _center.getY() + _radius;
+  else
+    return std::numeric_limits<double>::infinity();
+}
+
+
+/**
+ * @brief Returns the minimum z value of -INFINITY.
+ * @param halfspace the halfspace of the Hexagon to consider
+ * @return the minimum z value of -INFINITY
+ */
+double Hexagon::getMinZ(int halfspace){
+  return -std::numeric_limits<double>::infinity();
+}
+
+
+/**
+ * @brief Returns the maximum z value of INFINITY.
+ * @param halfspace the halfspace of the Hexagon to consider
+ * @return the maximum z value of INFINITY
+ */
+double Hexagon::getMaxZ(int halfspace){
+  return std::numeric_limits<double>::infinity();
+}
+
+/**
+ * @brief Finds the intersection Point with this hexagon from a given Point and
+ *        trajectory defined by an angle (0, 1, or 2 points).
+ * @param point pointer to the Point of interest
+ * @param angle the angle defining the trajectory in radians
+ * @param points pointer to a an array of Points to store intersection Points
+ * @return the number of intersection Points (0 or 1)
+ */
+int Hexagon::intersection(Point* point, double angle, Point* points) {
+  return 0;
+}
+
+
+/**
+ * @brief Converts this Hexagon's attributes to a character array.
+ * @details The character array returned conatins the type of Plane (ie,
+ *          HEXAGON) and the A, B, C, D and E coefficients in the
+ *          quadratic Surface equation.
+ * @return a character array of this Hexagon's attributes
+ */
+std::string Hexagon::toString() {
+
+  std::stringstream string;
+
+  string << "Surface ID = " << _id
+         << ", name " << _name
+         << ", type = HEXAGON ";
+  for(size_t i=0; i < _sides.size(); ++i)
+  {
+    string << ", side[" << i << "]: "
+           << " A = " << _sides.at(i).getA()
+           << " B = " << _sides.at(i).getB()
+           << " C = " << _sides.at(i).getC()
+           << std::endl;
+  }
+  string << ", x0 = " << _center.getX()
+         << ", y0 = " << _center.getY()
+         << ", radius = " << _radius
+         << ", inner radius = " << _iradius;
+
+  return string.str();
 }

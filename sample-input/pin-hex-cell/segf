@@ -1,0 +1,75 @@
+[  NORMAL ]  Importing materials data from HDF5...
+[  NORMAL ]  Creating surfaces...
+[  NORMAL ]  Creating geometry...
+[  NORMAL ]  Initializing the track generator...
+[  NORMAL ]  Importing ray tracing data from file...
+[  NORMAL ]  Converging the source...
+[  NORMAL ]  Iteration 0: 	k_eff = 1.000000	res = 0.000E+00
+[  NORMAL ]  Iteration 1: 	k_eff = 0.882411	res = 3.427E+01
+[  NORMAL ]  Iteration 2: 	k_eff = 0.776989	res = 4.811E-02
+[  NORMAL ]  Iteration 3: 	k_eff = 0.728976	res = 3.290E-02
+[  NORMAL ]  Iteration 4: 	k_eff = 0.706696	res = 2.253E-02
+[  NORMAL ]  Iteration 5: 	k_eff = 0.695174	res = 1.466E-02
+[  NORMAL ]  Iteration 6: 	k_eff = 0.688444	res = 8.035E-03
+[  NORMAL ]  Iteration 7: 	k_eff = 0.684189	res = 4.340E-03
+[  NORMAL ]  Iteration 8: 	k_eff = 0.681383	res = 2.533E-03
+[  NORMAL ]  Iteration 9: 	k_eff = 0.679507	res = 1.621E-03
+[  NORMAL ]  Iteration 10: 	k_eff = 0.678241	res = 1.110E-03
+[  NORMAL ]  Iteration 11: 	k_eff = 0.677371	res = 7.942E-04
+[  NORMAL ]  Iteration 12: 	k_eff = 0.676745	res = 5.840E-04
+[  NORMAL ]  Iteration 13: 	k_eff = 0.676263	res = 4.368E-04
+[  NORMAL ]  Iteration 14: 	k_eff = 0.675858	res = 3.306E-04
+[  NORMAL ]  Iteration 15: 	k_eff = 0.675497	res = 2.540E-04
+[  NORMAL ]  Iteration 16: 	k_eff = 0.675160	res = 2.006E-04
+[  NORMAL ]  Iteration 17: 	k_eff = 0.674847	res = 1.654E-04
+[  NORMAL ]  Iteration 18: 	k_eff = 0.674544	res = 1.416E-04
+[  NORMAL ]  Iteration 19: 	k_eff = 0.674247	res = 1.284E-04
+[  NORMAL ]  Iteration 20: 	k_eff = 0.673975	res = 1.211E-04
+[  NORMAL ]  Iteration 21: 	k_eff = 0.673705	res = 1.106E-04
+[  NORMAL ]  Iteration 22: 	k_eff = 0.673460	res = 1.090E-04
+[  NORMAL ]  Iteration 23: 	k_eff = 0.673224	res = 9.944E-05
+[  NORMAL ]  Iteration 24: 	k_eff = 0.673001	res = 9.680E-05
+[  NORMAL ]  Iteration 25: 	k_eff = 0.672795	res = 9.213E-05
+[  NORMAL ]  Iteration 26: 	k_eff = 0.672607	res = 8.576E-05
+[  NORMAL ]  Iteration 27: 	k_eff = 0.672425	res = 7.933E-05
+[  NORMAL ]  Iteration 28: 	k_eff = 0.672259	res = 7.766E-05
+[  NORMAL ]  Iteration 29: 	k_eff = 0.672098	res = 7.101E-05
+[  NORMAL ]  Iteration 30: 	k_eff = 0.671958	res = 7.028E-05
+[  NORMAL ]  Iteration 31: 	k_eff = 0.671829	res = 6.126E-05
+[  NORMAL ]  Iteration 32: 	k_eff = 0.671706	res = 5.646E-05
+[  NORMAL ]  Iteration 33: 	k_eff = 0.671593	res = 5.423E-05
+[  NORMAL ]  Iteration 34: 	k_eff = 0.671485	res = 5.021E-05
+[  NORMAL ]  Iteration 35: 	k_eff = 0.671390	res = 4.806E-05
+[  NORMAL ]  Iteration 36: 	k_eff = 0.671291	res = 4.232E-05
+[  NORMAL ]  Iteration 37: 	k_eff = 0.671208	res = 4.537E-05
+[  NORMAL ]  Iteration 38: 	k_eff = 0.671125	res = 3.720E-05
+[  NORMAL ]  Iteration 39: 	k_eff = 0.671051	res = 3.835E-05
+[  NORMAL ]  Iteration 40: 	k_eff = 0.670987	res = 3.358E-05
+[  NORMAL ]  Iteration 41: 	k_eff = 0.670925	res = 2.914E-05
+[  NORMAL ]  Iteration 42: 	k_eff = 0.670864	res = 2.808E-05
+[  NORMAL ]  Iteration 43: 	k_eff = 0.670805	res = 2.833E-05
+[  NORMAL ]  Iteration 44: 	k_eff = 0.670753	res = 2.719E-05
+[  NORMAL ]  Iteration 45: 	k_eff = 0.670710	res = 2.401E-05
+[  NORMAL ]  Iteration 46: 	k_eff = 0.670663	res = 1.962E-05
+[  NORMAL ]  Iteration 47: 	k_eff = 0.670624	res = 2.194E-05
+[  NORMAL ]  Iteration 48: 	k_eff = 0.670590	res = 1.754E-05
+[  NORMAL ]  Iteration 49: 	k_eff = 0.670550	res = 1.541E-05
+[  NORMAL ]  Iteration 50: 	k_eff = 0.670520	res = 1.927E-05
+[  NORMAL ]  Iteration 51: 	k_eff = 0.670489	res = 1.375E-05
+[  NORMAL ]  Iteration 52: 	k_eff = 0.670457	res = 1.439E-05
+[  NORMAL ]  Iteration 53: 	k_eff = 0.670441	res = 1.467E-05
+[  TITLE  ]  *******************************************************************
+[  TITLE  ]                             TIMING REPORT                           
+[  TITLE  ]  *******************************************************************
+[  RESULT ]  Total time to solution...............................4.8852E+00 sec
+[  RESULT ]  Solution time per unknown............................8.7235E-02 sec
+[  RESULT ]  Solution time per iteration..........................9.0466E-02 sec
+[  RESULT ]  Integration time per segment integration.............6.2908E-07 sec
+[SEPARATOR]  -------------------------------------------------------------------
+[  RESULT ]             # tracks          # segments          # FSRs
+[SEPARATOR]  -------------------------------------------------------------------
+[  RESULT ]                 568               3424               8              
+[SEPARATOR]  -------------------------------------------------------------------
+[  NORMAL ]  Plotting data...
+[  NORMAL ]  Plotting the materials...
+[  NORMAL ]  Plotting the cells...

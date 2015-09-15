@@ -38,6 +38,9 @@ enum surfaceType {
 
   /** A circle with axis parallel to the z-axis */
   CIRCLE,
+  
+  /** A hexagon with axis parallel to the z-axis */
+  HEXAGON,
 
   /** A plane perpendicular to the x-axis */
   XPLANE,
@@ -202,6 +205,7 @@ public:
 
   Plane(const double A, const double B, const double C,
         const int id=0, const char* name="");
+  Plane(const Plane &);
 
   double getMinX(int halfspace);
   double getMaxX(int halfspace);
@@ -380,6 +384,55 @@ public:
   std::string toString();
 };
 
+/**
+ * @class Hexagon Surface.h "src/Surface.h"
+ * @brief Represents a Hexagon in the xy-plane.
+ */
+class Hexagon: public Surface {
+
+private:
+  
+  /** The number of Hexagon sides */
+  const size_t _nsides = 6;
+  
+  /** A 2D point for the Hexagon's center */
+  Point _center;
+
+  /** The Hexagon's radius */
+  double _radius;
+
+  /** The Hexagon's inner radius */
+  double _iradius;
+  
+  std::vector<Plane> _sides;
+  
+  /** The Hexagon is a friend of the Surface class */
+  friend class Surface;
+
+  /** The Hexagon is a friend of the Plane class */
+  friend class Plane;
+
+public:
+  Hexagon(const double x, const double y, const double radius,
+         const int id=0, const char* name="");
+  ~Hexagon();
+
+  double getX0();
+  double getY0();
+  double getRadius();
+  double getMinX(int halfspace);
+  double getMaxX(int halfspace);
+  double getMinY(int halfspace);
+  double getMaxY(int halfspace);
+  double getMinZ(int halfspace);
+  double getMaxZ(int halfspace);
+
+  double evaluate(const Point* point) const;
+  int intersection(Point* point, double angle, Point* points);
+
+  std::string toString();
+};
+
 
 /**
  * @brief Finds the minimum distance to a Surface.
@@ -462,6 +515,26 @@ inline double Circle::evaluate(const Point* point) const {
   double x = point->getX();
   double y = point->getY();
   return (_A * x * x + _B * y * y + _C * x + _D * y + _E);
+}
+
+/**
+ * @brief Return the radius of the Hexagon.
+ * @return the radius of the Hexagon
+ */
+inline double Hexagon::getRadius() {
+  return this->_radius;
+}
+
+
+/**
+ * @brief Evaluate a Point using the Hexagon's quadratic Surface equation.
+ * @param point a pointer to the Point of interest
+ * @return the value of Point in the equation
+ */
+inline double Hexagon::evaluate(const Point* point) const {
+  double x = point->getX();
+  double y = point->getY();
+  return 1.0;
 }
 
 
