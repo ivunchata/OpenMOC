@@ -458,7 +458,7 @@ void CPUSolver::initializeCmfd() {
 
   _cmfd->setSurfaceCurrents(_surface_currents);
 
-  /* Initialize an array of OpenMP locks for each Cmfd Mesh surface */ 
+  /* Initialize an array of OpenMP locks for each Cmfd Mesh surface */
   _cmfd_surface_locks = new omp_lock_t[_num_mesh_cells * 8];
 
   /* Loop over all mesh cell surfaces to initialize OpenMP locks */
@@ -532,7 +532,7 @@ void CPUSolver::zeroSurfaceCurrents() {
 void CPUSolver::flattenFSRSources(FP_PRECISION value) {
 
   #pragma omp parallel for schedule(guided)
-  for (int r=0; r < _num_FSRs; r++) 
+  for (int r=0; r < _num_FSRs; r++)
     _old_fission_sources[r] = value;
 
   return;
@@ -1103,7 +1103,7 @@ void CPUSolver::addSourceToScalarFlux() {
  * @brief Computes the volume-weighted, energy integrated fission rate in
  *        each FSR and stores them in an array indexed by FSR ID.
  * @details This is a helper method for SWIG to allow users to retrieve
- *          FSR fission rates as a NumPy array. An example of how this method 
+ *          FSR fission rates as a NumPy array. An example of how this method
  *          can be called from Python is as follows:
  *
  * @code

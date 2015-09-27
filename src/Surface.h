@@ -39,7 +39,7 @@ enum surfaceType {
 
   /** A circle with axis parallel to the z-axis */
   CIRCLE,
-  
+
   /** A plane perpendicular to the x-axis */
   XPLANE,
 
@@ -51,7 +51,7 @@ enum surfaceType {
 
   /** A generalized quadratic surface */
   QUADRATIC,
-  
+
   /** A hexagon with axis parallel to the z-axis */
   HEXAGON
 };
@@ -308,26 +308,26 @@ private:
 
     /** The Hexagon's radius */
     double _radius;
-    
+
     /** Number of the Plane on the Hexagon */
     /** 0 means top left, 1 - left and so on...*/
     size_t _side_num;
-    
+
     /** The two points, fixing the plane */
     Point _vertex[2];
-    
+
     /** Min and Max coords if applicable for each halfspace */
     /** 0 corresponds to halfspace -1, and 1 to halfspace 1*/
     double _min_x[2], _max_x[2], _min_y[2], _max_y[2];
 
 public:
-  HexPlane(const double x, const double y, const double radius, 
+  HexPlane(const double x, const double y, const double radius,
            const size_t hex_id, const int id=0, const char* name="");
   double getMinX(int halfspace);
   double getMaxX(int halfspace);
   double getMinY(int halfspace);
   double getMaxY(int halfspace);
-  
+
 };
 
 /**
@@ -392,10 +392,10 @@ public:
 class Hexagon: public Surface {
 
 private:
-  
+
   /** The number of Hexagon sides */
   const size_t _nsides = 6;
-  
+
   /** A 2D point for the Hexagon's center */
   Point _center;
 
@@ -404,9 +404,9 @@ private:
 
   /** The Hexagon's inner radius */
   double _iradius;
-  
+
   std::vector<Plane> _sides;
-  
+
   /** The Hexagon is a friend of the Surface class */
   friend class Surface;
 
@@ -429,7 +429,7 @@ public:
   double getMaxZ(int halfspace);
 
   double evaluate(const Point* point) const;
-  double evaluate(const Point* point, const size_t line_num) const; 
+  double evaluate(const Point* point, const size_t line_num) const;
   int intersection(Point* point, double angle, Point* points);
 
   std::string toString();
@@ -539,7 +539,7 @@ inline double Hexagon::evaluate(const Point* point) const {
   for(size_t i = 0; i < half_nsides; ++i)
   {
     res1 = evaluate(point, i);
-    if (res1 > 0.0) 
+    if (res1 > 0.0)
       return 1.0;   // outside for i-th side
     res2 = evaluate(point, i + half_nsides);
     if (res2 > 0.0)

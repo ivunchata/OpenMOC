@@ -1249,7 +1249,7 @@ double Lattice::minSurfaceDist(Point* point, double angle) {
 int Lattice::getLatX(Point* point) {
 
   /* Compute the x indice for the Lattice cell this point is in */
-  int lat_x = (int)floor((point->getX() + _width_x*_num_x/2.0 - 
+  int lat_x = (int)floor((point->getX() + _width_x*_num_x/2.0 -
                           _offset.getX()) / _width_x);
 
   /* get the distance to the left surface */
@@ -1285,9 +1285,9 @@ int Lattice::getLatY(Point* point) {
 
   /* Check if the Point is on the Lattice boundaries and if so adjust
    * y Lattice cell indice */
-  if (fabs(dist_to_bottom) < ON_SURFACE_THRESH) 
+  if (fabs(dist_to_bottom) < ON_SURFACE_THRESH)
     lat_y = 0;
-  else if (fabs(dist_to_bottom - _num_y*_width_y) < ON_SURFACE_THRESH) 
+  else if (fabs(dist_to_bottom - _num_y*_width_y) < ON_SURFACE_THRESH)
     lat_y = _num_y - 1;
   else if (lat_y < 0 || lat_y > _num_y-1)
     log_printf(ERROR, "Trying to get lattice y index for point that is "
@@ -1295,7 +1295,7 @@ int Lattice::getLatY(Point* point) {
 
   return lat_y;
 }
-  
+
 
 /**
  * @brief Converts a Lattice's attributes to a character array representation.
@@ -1336,7 +1336,7 @@ void Lattice::printString() {
 /**
  * @brief Finds the Lattice cell index that a point lies in.
  * @details Lattice cells are numbered starting with 0 in the lower left
- *          corner. Lattice cell IDs in all rows then increase monotonically 
+ *          corner. Lattice cell IDs in all rows then increase monotonically
  *          from left to right. For example, the indices for a 4 x 4 lattice:
  *                  12  13  14  15
  *                  8    9  10  11
@@ -1355,7 +1355,7 @@ int Lattice::getLatticeCell(Point* point){
  *        If the point is not on a surface, -1 is returned.
  * @details The surface indices for a lattice cell are 0 (left),
  *         1, (bottom), 2 (right), 3 (top), 4 (bottom-left corner),
- *         5 (bottom-right corner), 6 (top-right corner), and 
+ *         5 (bottom-right corner), 6 (top-right corner), and
  *         7 (top-left corner). The index returned takes into account
  *         the cell index and returns 8*cell_index + surface_index.
  * @param cell the cell index that the point is in.
@@ -1375,32 +1375,32 @@ int Lattice::getLatticeSurface(int cell, Point* point) {
   double top = (lat_y+1)*_width_y - _width_y*_num_y/2.0 + _offset.getY();
   int surface = -1;
 
-  /* Check if point is on left boundary */ 
+  /* Check if point is on left boundary */
   if (fabs(x - left) <= ON_SURFACE_THRESH){
-    /* Check if point is on bottom boundary */ 
+    /* Check if point is on bottom boundary */
     if (fabs(y - bottom) <= ON_SURFACE_THRESH)
       surface = cell*8 + 4;
-    /* Check if point is on top boundary */ 
+    /* Check if point is on top boundary */
     else if (fabs(y - top) <= ON_SURFACE_THRESH)
       surface = cell*8 + 7;
     else
       surface = cell*8;
   }
-  /* Check if point is on right boundary */ 
+  /* Check if point is on right boundary */
   else if (fabs(x - right) <= ON_SURFACE_THRESH){
-    /* Check if point is on bottom boundary */ 
+    /* Check if point is on bottom boundary */
     if (fabs(y - bottom) <= ON_SURFACE_THRESH)
       surface = cell*8 + 5;
-    /* Check if point is on top boundary */ 
+    /* Check if point is on top boundary */
     else if (fabs(y - top) <= ON_SURFACE_THRESH)
       surface = cell*8 + 6;
     else
       surface = cell*8 + 2;
   }
-  /* Check if point is on bottom boundary */ 
+  /* Check if point is on bottom boundary */
   else if (fabs(y - bottom) <= ON_SURFACE_THRESH)
     surface = cell*8 + 1;
-  /* Check if point is on top boundary */ 
+  /* Check if point is on top boundary */
   else if (fabs(y - top) <= ON_SURFACE_THRESH)
     surface = cell*8 + 3;
 

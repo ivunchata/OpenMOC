@@ -57,16 +57,16 @@ inline void vector_zero(T* vector, int length){
  * @param block_width number of elements in cell blocks in M matrix.
  */
 template <typename T>
-inline void matrix_multiplication(T** matrix, T* vector_x, 
-                                  T* vector_y, int num_blocks, 
+inline void matrix_multiplication(T** matrix, T* vector_x,
+                                  T* vector_y, int num_blocks,
                                   int block_width){
 
-  vector_zero(vector_y, num_blocks*block_width); 
+  vector_zero(vector_y, num_blocks*block_width);
 
   for (int i = 0; i < num_blocks; i++){
     for (int g = 0; g < block_width; g++){
       for (int e = 0; e < block_width; e++){
-        vector_y[i*block_width+g] += matrix[i][g*block_width+e] 
+        vector_y[i*block_width+g] += matrix[i][g*block_width+e]
             * vector_x[i*block_width+e];
       }
     }

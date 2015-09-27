@@ -462,7 +462,7 @@ void TrackGenerator::initializeTrackFileDirectory() {
     test_filename << directory.str() << "/"
                   << _num_azim*2.0 << "_angles_"
                   << _spacing << "_cm_spacing_cmfd_"
-                  << _geometry->getCmfd()->getNumX() 
+                  << _geometry->getCmfd()->getNumX()
                   << "x" << _geometry->getCmfd()->getNumY()
                   << ".data";
     }
@@ -1430,8 +1430,8 @@ bool TrackGenerator::readTracksFromFile() {
 void TrackGenerator::setMaxOpticalLength(FP_PRECISION max_optical_length) {
   if (max_optical_length <= 0)
     log_printf(ERROR, "Cannot set max optical length to %f because it "
-               "must be positive.", max_optical_length); 
-        
+               "must be positive.", max_optical_length);
+
   _max_optical_length = max_optical_length;
 }
 

@@ -192,7 +192,7 @@ Plane::Plane(const double A, const double B,
 
 /**
  * @brief Copy constructor.
- */ 
+ */
 Plane::Plane(const Plane &p)
 {
   _id = p._id;
@@ -620,23 +620,23 @@ std::string ZPlane::toString() {
  * @param id the optional Surface ID
  * @param name the optional Surface name
  */
-HexPlane::HexPlane(const double x, const double y, const double radius, 
+HexPlane::HexPlane(const double x, const double y, const double radius,
                    const size_t hex_id, const int id, const char* name) :
   Plane(0., 0., 0., id, name) {  // A, B and C will be calculated and set below
-  
+
   _surface_type = PLANE;
   _radius = radius;
   _center.setX(x);
   _center.setY(y);
   _side_num = hex_id;
-  
+
   // The linear coefficients of the Plane(line) are calculated from the two
   // vertices it passes trough.
   // Determine top vertex
   Point t, _vertex[1]; // t - the top point, relative to the beginning of the CS
   t.setX(0);
   t.setY(_radius);
-  
+
   // rotate the two points to their respective positions
   double tmp_a = _side_num * M_PI / 3;
   _vertex[0].setX(t.getX() * cos(tmp_a) - t.getY() * sin(tmp_a));
@@ -644,18 +644,18 @@ HexPlane::HexPlane(const double x, const double y, const double radius,
   tmp_a += M_PI / 3; // point _vertex[1] is 60 degrees further from _vertex[0]
   _vertex[1].setX(t.getX() * cos(tmp_a) - t.getY() * sin(tmp_a));
   _vertex[1].setY(t.getX() * sin(tmp_a) + t.getY() * cos(tmp_a));
-  
+
   // shift the points to the center
   _vertex[0].setX(_vertex[0].getX() + _center.getX());
   _vertex[0].setY(_vertex[0].getY() + _center.getY());
   _vertex[1].setX(_vertex[1].getX() + _center.getX());
   _vertex[1].setY(_vertex[1].getY() + _center.getY());
-  
+
   // calculate the Plane coefficients
   _A = -(_vertex[1].getY() - _vertex[0].getY());
   _B = -(_vertex[0].getX() - _vertex[1].getX());
   _C = -(_vertex[0].getY() * _vertex[1].getX() - _vertex[0].getX() * _vertex[1].getY());
-  
+
 //  std::cout << "Ax: " << std::setprecision(3) << _vertex[0].getX() << " Ay: " << std::setprecision(3) << _vertex[0].getY() << std::endl;
 //  std::cout << "Bx: " << std::setprecision(3) << _vertex[1].getX() << " By: " << std::setprecision(3) << _vertex[1].getY() << std::endl;
 //  std::cout << "A:  " << std::setprecision(3) << _A                << " B:  " << std::setprecision(3) << _B << std::setprecision(3) << " C:  " << std::setprecision(3) << _C << std::endl;
@@ -665,10 +665,10 @@ HexPlane::HexPlane(const double x, const double y, const double radius,
   _max_x[0] = _max_x[1] = + std::numeric_limits<double>::infinity();
   _min_y[0] = _min_y[1] = - std::numeric_limits<double>::infinity();
   _max_y[0] = _max_y[1] = + std::numeric_limits<double>::infinity();
-  
+
 //  size_t idx_a = _side_num % 2;
 //  size_t idx_b = (_side_num + 1) % 2;
-//  
+//
 //  if (_side_num % 3 == 0) // side_num is 0 or 3
 //  {
 //    _min_x[idx_a] = _vertex[idx_b].getX();
@@ -695,7 +695,7 @@ HexPlane::HexPlane(const double x, const double y, const double radius,
 }
 
 /**
- * @brief Returns the minimum x value for one of this HexPlane's halfspaces. 
+ * @brief Returns the minimum x value for one of this HexPlane's halfspaces.
  * If the halfspace is from the side of the hexagon center, additional limits are applied.
  * @param halfspace the halfspace of the HexPlane to consider
  * @return the minimum x value
@@ -705,7 +705,7 @@ double HexPlane::getMinX(int halfspace){
 }
 
 /**
- * @brief Returns the maximum x value for one of this HexPlane's halfspaces. 
+ * @brief Returns the maximum x value for one of this HexPlane's halfspaces.
  * If the halfspace is from the side of the hexagon, additional limits are applied.
  * @param halfspace the halfspace of the HexPlane to consider
  * @return the maximum x value
@@ -715,7 +715,7 @@ double HexPlane::getMaxX(int halfspace){
 }
 
 /**
- * @brief Returns the minimum y value for one of this HexPlane's halfspaces. 
+ * @brief Returns the minimum y value for one of this HexPlane's halfspaces.
  * If the halfspace is from the side of the hexagon, additional limits are applied.
  * @param halfspace the halfspace of the HexPlane to consider
  * @return the minimum y value
@@ -725,7 +725,7 @@ double HexPlane::getMinY(int halfspace){
 }
 
 /**
- * @brief Returns the maximum y value for one of this HexPlane's halfspaces. 
+ * @brief Returns the maximum y value for one of this HexPlane's halfspaces.
  * If the halfspace is from the side of the hexagon, additional limits are applied.
  * @param halfspace the halfspace of the HexPlane to consider
  * @return the maximum y value
@@ -1014,14 +1014,14 @@ Hexagon::Hexagon(const double x, const double y,
   _iradius = _radius * sqrt(3) * 0.5;
   _center.setX(x);
   _center.setY(y);
-  
+
   // The linear coefficients of the Plane(line) are calculated from the two
   // vertices it passes trough.
   Point t;  // the top vertex
   t.setX(0);
   t.setY(_radius);
   double tmp_angle = M_PI * 2. / _nsides;
-  
+
   for (size_t i=0 ; i < _nsides ; ++i)
   {
     double tmp_ang = i * tmp_angle;  // work angle: a multiple of PI/3 for a hexagon
@@ -1164,7 +1164,7 @@ int Hexagon::intersection(Point* point, double angle, Point* points) {
  * @return a character array of this Hexagon's attributes
  */
 std::string Hexagon::toString() {
-  
+
   std::stringstream string;
 
   string << "Surface ID = " << _id

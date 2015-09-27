@@ -457,9 +457,9 @@ Material* Geometry::findFSRMaterial(int fsr_id) {
  *          to be the one at the boundary of the next Cell crossed along the
  *          given trajectory. It will do this by finding the minimum distance
  *          to the surfaces at all levels of the coords hierarchy.
- *          If the LocalCoords is outside the bounds of the Geometry or on 
- *          the boundaries this method will return NULL; otherwise it will 
- *          return a pointer to the Cell that the LocalCoords will reach 
+ *          If the LocalCoords is outside the bounds of the Geometry or on
+ *          the boundaries this method will return NULL; otherwise it will
+ *          return a pointer to the Cell that the LocalCoords will reach
  *          next along its trajectory.
  * @param coords pointer to a LocalCoords object
  * @param angle the angle of the trajectory
@@ -552,7 +552,7 @@ int Geometry::findFSRId(LocalCoords* coords) {
 
     /* Get the cell that contains coords */
     CellBasic* cell = findCellContainingCoords(curr);
-    
+
     /* Get the lock */
     omp_set_lock(_num_FSRs_lock);
 
@@ -566,7 +566,7 @@ int Geometry::findFSRId(LocalCoords* coords) {
       fsr_data* fsr = new fsr_data;
       fsr->_fsr_id = fsr_id;
       Point* point = new Point();
-      point->setCoords(coords->getHighestLevel()->getX(), 
+      point->setCoords(coords->getHighestLevel()->getX(),
                        coords->getHighestLevel()->getY());
       fsr->_point = point;
       _FSR_keys_map[fsr_key_hash] = *fsr;
@@ -743,7 +743,7 @@ void Geometry::subdivideCells() {
  * @details This method is intended to be called by the user before initiating
  *          source iteration. This method first subdivides all Cells by calling
  *          the Geometry::subdivideCells() method. Then it initializes the CMFD
- *          object. 
+ *          object.
  */
 void Geometry::initializeFlatSourceRegions() {
 
@@ -1045,7 +1045,7 @@ void Geometry::initializeCmfd(){
   lattice->setWidth(cell_width, cell_height);
   lattice->setNumX(num_x);
   lattice->setNumY(num_y);
-  lattice->setOffset(getMinX() + getWidth()/2.0, 
+  lattice->setOffset(getMinX() + getWidth()/2.0,
                      getMinY() + getHeight()/2.0);
   _cmfd->setLattice(lattice);
 
@@ -1110,11 +1110,11 @@ std::vector<int> Geometry::getFSRsToMaterialIDs() {
  *          the Lattice/Cell/Universe hierarchy for a unique region
  *          and the associated FSR data. fsr_data is a struct that contains
  *          a unique FSR id and a Point located in the highest level Universe
- *          that is contained in the FSR. This method is used when the tracks 
- *          are read from file to avoid unnecessary segmentation.  
+ *          that is contained in the FSR. This method is used when the tracks
+ *          are read from file to avoid unnecessary segmentation.
  * @param FSR_keys_map map of FSR keys to FSR data
  */
-void Geometry::setFSRKeysMap(std::unordered_map<std::size_t, fsr_data> 
+void Geometry::setFSRKeysMap(std::unordered_map<std::size_t, fsr_data>
                              FSR_keys_map){
   _FSR_keys_map = FSR_keys_map;
 }

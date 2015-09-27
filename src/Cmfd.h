@@ -54,15 +54,15 @@ private:
   /** The new source vector */
   FP_PRECISION* _new_source;
 
-  /** Vector representing the flux for each cmfd cell and cmfd enegy group at 
+  /** Vector representing the flux for each cmfd cell and cmfd enegy group at
    * the end of a CMFD solve */
   FP_PRECISION* _new_flux;
 
-  /** Vector representing the flux for each cmfd cell and cmfd enegy group at 
+  /** Vector representing the flux for each cmfd cell and cmfd enegy group at
    * the beginning of a CMFD solve */
   FP_PRECISION* _old_flux;
 
-  /** Vector representing the flux during the previous iteration of a 
+  /** Vector representing the flux during the previous iteration of a
    * cmfd solve */
   FP_PRECISION* _flux_temp;
 
@@ -164,7 +164,7 @@ public:
   int findCmfdCell(LocalCoords* coords);
   int findCmfdSurface(int cell, LocalCoords* coords);
   void addFSRToCell(int cmfd_cell, int fsr_id);
-  void updateBoundaryFlux(Track** tracks, FP_PRECISION* boundary_flux, 
+  void updateBoundaryFlux(Track** tracks, FP_PRECISION* boundary_flux,
                           int num_tracks);
 
   /* Get parameters */
@@ -201,7 +201,7 @@ public:
   void setGroupStructure(int* group_indices, int length_group_indices);
   void setSourceConvergenceThreshold(FP_PRECISION source_thresh);
   void setPolarQuadrature(quadratureType quadrature_type, int num_polar);
-  
+
   /* Set FSR parameters */
   void setFSRMaterials(Material** FSR_materials);
   void setFSRVolumes(FP_PRECISION* FSR_volumes);

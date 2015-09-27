@@ -60,7 +60,7 @@ private:
   /** An integer array of the number of Tracks starting on the y-axis for each
    *  azimuthal angle */
   int* _num_y;
-  
+
   /** The maximum optical length a track is allowed to have */
   FP_PRECISION _max_optical_length;
 

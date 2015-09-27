@@ -2,7 +2,7 @@
 /**
  * @brief Constructor initializes an empty Solver class with array pointers
  *        set to NULL.
- * @details If the constructor receives Geometry and TrackGenerator 
+ * @details If the constructor receives Geometry and TrackGenerator
  *          objects it will retrieve the number of energy groups
  *          and FSRs from the Geometry and azimuthal angles from the
  *          TrackGenerator.
