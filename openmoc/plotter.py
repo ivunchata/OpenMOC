@@ -7,30 +7,10 @@
 # @author William Boyd (wboyd@mit.edu)
 # @date March 10, 2013
 
+import os
 import sys
-
-## @var openmoc
-#  @brief The openmoc module in use in the Python script using the
-#         openmoc.plotter module.
-openmoc = ''
-
-# Determine which OpenMOC module is being used
-if 'openmoc.gnu.double' in sys.modules:
-  openmoc = sys.modules['openmoc.gnu.double']
-elif 'openmoc.gnu.single' in sys.modules:
-  openmoc = sys.modules['openmoc.gnu.single']
-elif 'openmoc.intel.double' in sys.modules:
-  openmoc = sys.modules['openmoc.intel.double']
-elif 'openmoc.intel.single' in sys.modules:
-  openmoc = sys.modules['openmoc.intel.single']
-elif 'openmoc.bgq.double' in sys.modules:
-  openmoc = sys.modules['openmoc.bgq.double']
-elif 'openmoc.bgq.single' in sys.modules:
-  openmoc = sys.modules['openmoc.bgq.single']
-else:
-  from openmoc import *
-
-
+import numpy as np
+import numpy.random
 import matplotlib
 
 # force headless backend, or set 'backend' to 'Agg'
@@ -38,16 +18,10 @@ import matplotlib
 matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
-
-# Force non-interactive mode, or set 'interactive' to False
-# in your ~/.matplotlib/matplotlibrc
-plt.ioff()
-
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
-import numpy as np
-import numpy.random
-import os, sys
+
+import openmoc
 
 # For Python 2.X.X
 if (sys.version_info[0] == 2):
@@ -58,9 +32,14 @@ else:
   from openmoc.log import *
   from openmoc.process import *
 
+# Force non-interactive mode, or set 'interactive' to False
+# in your ~/.matplotlib/matplotlibrc
+plt.ioff()
 
 ## A static variable for the output directory in which to save plots
 subdirectory = "/plots/"
+
+TINY_MOVE = openmoc.TINY_MOVE
 
 
 ##
@@ -78,7 +57,7 @@ def plot_tracks(track_generator):
 
   global subdirectory
 
-  directory = get_output_directory() + subdirectory
+  directory = openmoc.get_output_directory() + subdirectory
 
   # Make directory if it does not exist
   if not os.path.exists(directory):
@@ -142,7 +121,7 @@ def plot_segments(track_generator):
 
   global subdirectory
 
-  directory = get_output_directory() + subdirectory
+  directory = openmoc.get_output_directory() + subdirectory
 
   # Make directory if it does not exist
   if not os.path.exists(directory):
@@ -233,7 +212,7 @@ def plot_materials(geometry, gridsize=250, xlim=None, ylim=None):
 
   global subdirectory
 
-  directory = get_output_directory() + subdirectory
+  directory = openmoc.get_output_directory() + subdirectory
 
   # Make directory if it does not exist
   if not os.path.exists(directory):
@@ -267,7 +246,7 @@ def plot_materials(geometry, gridsize=250, xlim=None, ylim=None):
       x = coords['x'][i]
       y = coords['y'][j]
 
-      point = LocalCoords(x, y)
+      point = openmoc.LocalCoords(x, y)
       point.setUniverse(geometry.getRootUniverse())
       cell = geometry.findCellContainingCoords(point)
 
@@ -275,7 +254,7 @@ def plot_materials(geometry, gridsize=250, xlim=None, ylim=None):
       if cell is None:
         surface[j][i] = -1
       else:
-        surface[j][i] = cell.getMaterial().getId()
+        surface[j][i] = cell.getFillMaterial().getId()
 
   # Get the number of Materials in the Geometry
   materials = geometry.getAllMaterials()
@@ -329,7 +308,7 @@ def plot_cells(geometry, gridsize=250, xlim=None, ylim=None):
 
   global subdirectory
 
-  directory = get_output_directory() + subdirectory
+  directory = openmoc.get_output_directory() + subdirectory
 
   # Make directory if it does not exist
   if not os.path.exists(directory):
@@ -363,7 +342,7 @@ def plot_cells(geometry, gridsize=250, xlim=None, ylim=None):
       x = coords['x'][i]
       y = coords['y'][j]
 
-      point = LocalCoords(x, y)
+      point = openmoc.LocalCoords(x, y)
       point.setUniverse(geometry.getRootUniverse())
       cell = geometry.findCellContainingCoords(point)
 
@@ -413,6 +392,8 @@ def plot_cells(geometry, gridsize=250, xlim=None, ylim=None):
 ##
 # @brief This method takes in a Geometry object and plots a color-coded 2D
 #        surface plot representing the flat source regions in the Geometry.
+#        The FSR centroids are plotted as black circles on top of the FSRs if
+#        the centroids boolean is set to True.
 # @details The Geometry object must be initialized with Materials, Cells,
 #          Universes and Lattices before being passed into this method. A user
 #          may invoke this function from an OpenMOC Python file as follows:
@@ -426,11 +407,15 @@ def plot_cells(geometry, gridsize=250, xlim=None, ylim=None):
 # @param gridsize an optional number of grid cells for the plot
 # @param xlim optional list/tuple of the minimim/maximum x-coordinates
 # @param ylim optional list/tuple of the minimim/maximum y-coordinates
-def plot_flat_source_regions(geometry, gridsize=250, xlim=None, ylim=None):
+# @param centroids optional boolean to plot the FSR centroids
+# @param marker_type optional string to set the centroids marker type
+# @param marker_size optional int/float to set the centroids marker size
+def plot_flat_source_regions(geometry, gridsize=250, xlim=None, ylim=None, \
+                             centroids=False, marker_type='o', marker_size=2):
 
   global subdirectory
 
-  directory = get_output_directory() + subdirectory
+  directory = openmoc.get_output_directory() + subdirectory
 
   # Make directory if it does not exist
   if not os.path.exists(directory):
@@ -443,11 +428,31 @@ def plot_flat_source_regions(geometry, gridsize=250, xlim=None, ylim=None):
 
   if not is_integer(gridsize):
     py_printf('ERROR', 'Unable to plot the flat source regions since ' + \
-              'since the gridsize %d is not an integer', gridsize)
+              'the gridsize %d is not an integer', gridsize)
 
   if gridsize <= 0:
     py_printf('ERROR', 'Unable to plot the flat source regions ' + \
               'with a negative gridsize (%d)', gridsize)
+
+  if not isinstance(centroids, bool):
+    py_printf('ERROR', 'Unable to plot the flat source regions since ' + \
+              'centroids is not a boolean')
+
+  if not isinstance(marker_type, str):
+    py_printf('ERROR', 'Unable to plot the flat source regions since ' + \
+              'marker_type is a string')
+
+  if marker_type not in matplotlib.markers.MarkerStyle().markers.keys():
+    py_printf('ERROR', 'Unable to plot the flat source regions since ' + \
+              'marker_type is not a valid marker (%d)', marker_type)
+
+  if not is_float(marker_size) and not is_integer(marker_size):
+    py_printf('ERROR', 'Unable to plot the flat source regions since ' + \
+              'marker_size is not an int or float', marker_size)
+
+  if marker_size <= 0:
+    py_printf('ERROR', 'Unable to plot the flat source regions ' + \
+              'with a negative marker_size (%d)', marker_size)
 
   py_printf('NORMAL', 'Plotting the flat source regions...')
 
@@ -471,7 +476,7 @@ def plot_flat_source_regions(geometry, gridsize=250, xlim=None, ylim=None):
       x = coords['x'][i]
       y = coords['y'][j]
 
-      local_coords = LocalCoords(x, y)
+      local_coords = openmoc.LocalCoords(x, y)
       local_coords.setUniverse(geometry.getRootUniverse())
       geometry.findCellContainingCoords(local_coords)
       fsr_id = geometry.getFSRId(local_coords)
@@ -509,6 +514,25 @@ def plot_flat_source_regions(geometry, gridsize=250, xlim=None, ylim=None):
   colors = np.flipud(colors)
   plt.imshow(colors, extent=coords['bounds'],
              interpolation='nearest', cmap=cmap, vmin=0, vmax=num_fsrs)
+
+  # Plot centroids on top of 2D FSR color map
+  if centroids:
+    centroids_x = []
+    centroids_y = []
+    for r in range(geometry.getNumFSRs()):
+      point = geometry.getFSRCentroid(r)
+      centroids_x.append(point.getX())
+      centroids_y.append(point.getY())
+
+    plt.scatter(centroids_x, centroids_y, color='k', marker=marker_type, \
+                s=marker_size)
+
+    # Matplotlib likes to add a buffer around scatter plots, so we will
+    # manually set the plot bounds
+    plt.xlim(min(coords['x']), max(coords['x']))
+    plt.ylim(min(coords['y']), max(coords['y']))
+
+  # Set the plot title and save the figure
   plt.title('Flat Source Regions')
   filename = directory + 'flat-source-regions.png'
   fig.savefig(filename, bbox_inches='tight')
@@ -542,7 +566,7 @@ def plot_cmfd_cells(geometry, cmfd, gridsize=250, xlim=None, ylim=None):
 
   global subdirectory
 
-  directory = get_output_directory() + subdirectory
+  directory = openmoc.get_output_directory() + subdirectory
 
   # Make directory if it does not exist
   if not os.path.exists(directory):
@@ -580,7 +604,7 @@ def plot_cmfd_cells(geometry, cmfd, gridsize=250, xlim=None, ylim=None):
       x = coords['x'][i]
       y = coords['y'][j]
 
-      local_coords = LocalCoords(x, y)
+      local_coords = openmoc.LocalCoords(x, y)
       local_coords.setUniverse(geometry.getRootUniverse())
       geometry.findCellContainingCoords(local_coords)
       fsr_id = geometry.getFSRId(local_coords)
@@ -594,7 +618,6 @@ def plot_cmfd_cells(geometry, cmfd, gridsize=250, xlim=None, ylim=None):
 
   # Get the number of CMFD cells
   num_cmfd_cells = cmfd.getNumCells()
-#  cmfd_cells = np.arange(num_cmfd_cells, dtype=np.int64)
 
   # Replace each Cell ID with a random (but reproducible) color ID
   # NOTE: This color coding scheme only works for FSRs and CMFD cells and not
@@ -627,94 +650,68 @@ def plot_cmfd_cells(geometry, cmfd, gridsize=250, xlim=None, ylim=None):
 
 
 ##
-# @brief This method takes in a Geometry object and plots a color-coded 2D
-#        surface plot representing the flat source regions in the Geometry.
-# @details The geometry object must be initialized with Materials, Cells,
-#          Universes and Lattices before being passed into this method. A user
-#          may invoke this function from an OpenMOC Python file as follows:
+# @brief This method takes in a Solver object and plots a color-coded 2D
+#        surface plot representing the flat source region scalar fluxes.
+# @details The Solver must have converged the flat source sources prior to
+#          calling this routine. A user may invoke this function from an 
+#          OpenMOC Python file as follows:
 #
 # @code
-#         openmoc.plotter.plot_fluxes(geometry, solver, energy_groups=[1,7])
+#         openmoc.plotter.plot_spatial_fluxes(solver, energy_groups=[1,7])
 # @endcode
 #
-# @param geometry a Geometry object which has been initialized with Materials,
-#        Cells, Universes and Lattices
 # @param solver a Solver object that has converged the source for the Geometry
 # @param energy_groups a Python list of integer energy groups to plot
 # @param gridsize an optional number of grid cells for the plot
 # @param xlim optional list/tuple of the minimim/maximum x-coordinates
 # @param ylim optional list/tuple of the minimim/maximum y-coordinates
-def plot_fluxes(geometry, solver, energy_groups=[1],
-                gridsize=250, xlim=None, ylim=None):
+def plot_spatial_fluxes(solver, energy_groups=[1],
+                        gridsize=250, xlim=None, ylim=None):
 
   global subdirectory
 
-  directory = get_output_directory() + subdirectory
+  directory = openmoc.get_output_directory() + subdirectory
 
   # Make directory if it does not exist
   if not os.path.exists(directory):
     os.makedirs(directory)
 
-  # Error checking
-  if not 'Geometry' in str(type(geometry)):
-    py_printf('ERROR', 'Unable to plot the flat source region scalar ' + \
-              'flux since input did not contain a geometry class object')
-
   if not 'Solver' in str(type(solver)):
-    py_printf('ERROR', 'Unable to plot the flat source region scalar ' + \
-              'flux since input did not contain a solver class object')
+    py_printf('ERROR', 'Unable to plot the FSR flux since the ' + \
+              'input did not contain a solver class object')
 
-  if isinstance(energy_groups, list):
+  geometry = solver.getGeometry()
+  num_groups = geometry.getNumEnergyGroups()
+
+  if isinstance(energy_groups, (list, tuple, np.ndarray)):
     for group in energy_groups:
       if not is_integer(group):
-        py_printf('ERROR', 'Unable to plot the flat source region ' + \
-                 'scalar flux since the energy_groups list ' + \
-                 'contains %s which is not an int', str(group))
+        py_printf('ERROR', 'Unable to plot the FSR flux since the ' + \
+                  'energy_groups contains %s which is not a number', str(group))
 
       elif group <= 0:
-        py_printf('ERROR', 'Unable to plot the flat source region scalar ' + \
-                 'flux since the energy_groups list contains %d which is' + \
-                 'less than the index for all energy groups', group)
+        py_printf('ERROR', 'Unable to plot the FSR flux since the ' + \
+                  'energy_groups contains %d which is less than the ' + \
+                  'index for all energy groups', group)
 
-      elif group > geometry.getNumEnergyGroups():
-        py_printf('ERROR', 'Unable to plot the flat source region scalar ' + \
-                  'flux since the energy_groups list contains %d which is' + \
-                  ' greater than the index for all energy groups', group)
+      elif group > num_groups:
+        py_printf('ERROR', 'Unable to plot the FSR flux since the ' + \
+                  'energy_groups contains %d which is greater than ' + \
+                  'the index for all energy groups', group)
 
-  elif is_integer(energy_groups):
-    if energy_groups <= 0:
-      py_printf('ERROR', 'Unable to plot the flat source region scalar ' + \
-               'flux since the energy_groups argument contains %d which is' + \
-               ' less than the index for all energy groups', energy_groups)
-
-    elif energy_groups > geometry.getNumEnergyGroups():
-      py_printf('ERROR', 'Unable to plot the flat source region ' + \
-                'scalar flux since the energy_groups argument ' + \
-                'contains %d which is greater than the index ' + \
-                'for all energy groups', energy_groups)
-
-    else:
-      py_printf('ERROR', 'Unable to plot the flat source region ' + \
-                'scalar flux since the energy_groups argument ' + \
-                'is %s which is not an energy group index or a list ' + \
-                'of energy group indices', str(energy_groups))
+  else:
+    py_printf('ERROR', 'Unable to plot the FSR flux since the ' + \
+              'energy_groups is not a Python tuple/list or NumPy array')
 
   if not is_integer(gridsize):
-    py_printf('ERROR', 'Unable to plot the flat source region scalar flux ' + \
-              'since since the gridsize %s is not an integer', str(gridsize))
-
-  if not is_integer(energy_groups) and not isinstance(energy_groups, list):
-    py_printf('ERROR', 'Unable to plot the flat source region scalar ' + \
-              'flux since the energy_groups is not an int or a list')
+    py_printf('ERROR', 'Unable to plot the FSR flux since the ' + \
+              'gridsize %s is not an integer', str(gridsize))
 
   if gridsize <= 0:
-    py_printf('ERROR', 'Unable to plot the flat source regions ' + \
-              'with a negative gridsize (%d)', gridsize)
+    py_printf('ERROR', 'Unable to plot the FSR flux with a ' + \
+              'negative gridsize (%d)', gridsize)
 
-  py_printf('NORMAL', 'Plotting the flat source region scalar fluxes...')
-
-  if not isinstance(energy_groups, list):
-    energy_groups = [energy_groups]
+  py_printf('NORMAL', 'Plotting the FSR scalar fluxes...')
 
   # Initialize a numpy array for the groupwise scalar fluxes
   fluxes = numpy.zeros((len(energy_groups), gridsize, gridsize))
@@ -729,7 +726,7 @@ def plot_fluxes(geometry, solver, energy_groups=[1],
       x = coords['x'][i]
       y = coords['y'][j]
 
-      point = LocalCoords(x, y)
+      point = openmoc.LocalCoords(x, y)
       point.setUniverse(geometry.getRootUniverse())
       geometry.findCellContainingCoords(point)
       fsr_id = geometry.getFSRId(point)
@@ -741,7 +738,7 @@ def plot_fluxes(geometry, solver, energy_groups=[1],
       # Get the scalar flux for each energy group in this FSR
       else:
         for index, group in enumerate(energy_groups):
-          fluxes[index,j,i] = solver.getFSRScalarFlux(fsr_id, group)
+          fluxes[index,j,i] = solver.getFlux(fsr_id, group)
 
   # Loop over all energy group and create a plot
   for index, group in enumerate(energy_groups):
@@ -750,44 +747,179 @@ def plot_fluxes(geometry, solver, energy_groups=[1],
     fig = plt.figure()
     plt.imshow(np.flipud(fluxes[index,:,:]), extent=coords['bounds'])
     plt.colorbar()
-    plt.title('Flat Source Region Scalar Flux in Group ' + str(group))
+    plt.title('FSR Scalar Flux (Group {0})'.format(group))
     filename = directory + 'fsr-flux-group-' + str(group) + '.png'
     fig.savefig(filename, bbox_inches='tight')
     plt.close(fig)
 
 
 ##
-# @brief This method takes in a Geometry object and plots a color-coded 2D
-#        surface plot representing the flat source region fission rates in 
-#        the Geometry.
-# @details The geometry object must be initialized with Materials, Cells,
-#          Universes and Lattices before being passed into this method. A user
-#          may invoke this function from an OpenMOC Python file as follows:
+# @brief This method takes in a Solver object and plots the scalar
+#        flux vs. energy for one or more flat source regions.
+# @details The Solver must have converged the flat source sources prior to
+#          calling this routine. The routine will generate a step plot of the
+#          flat flux across each energy group. 
+#
+#          An optional parameter for the energy group bounds may be input. 
+#          The group bounds should be input in increasing order of energy.
+#          If group bounds are not specified, the routine will use equal 
+#          width steps for each energy group.
+#
+#          A user may invoke this function from an OpenMOC Python file 
+#          as follows:
 #
 # @code
-#         openmoc.plotter.plot_fission_rates(geometry, solver)
+#         openmoc.plotter.plot_energy_fluxes(solver, fsrs=[1,5,20],
+#                                            group_bounds=[0., 0.625, 2e7])
 # @endcode
 #
-# @param geometry a Geometry object which has been initialized with Materials,
-#        Cells, Universes and Lattices
 # @param solver a Solver object that has converged the source for the Geometry
-# @param gridsize an optional number of grid cells for the plot
-# @param xlim optional list/tuple of the minimim/maximum x-coordinates
-# @param ylim optional list/tuple of the minimim/maximum y-coordinates
-def plot_fission_rates(geometry, solver, gridsize=250, xlim=None, ylim=None):
+# @param fsrs the flat source region IDs of interest
+# @param group_bounds an optional Python list of the energy group bounds (eV)
+# @param norm a boolean indicating whether to normalize the flux
+# @param loglog boolean indicating whether to plot use a log-log scale
+def plot_energy_fluxes(solver, fsrs, group_bounds=None, norm=True, loglog=True):
 
   global subdirectory
 
-  directory = get_output_directory() + subdirectory
+  directory = openmoc.get_output_directory() + subdirectory
 
   # Make directory if it does not exist
   if not os.path.exists(directory):
     os.makedirs(directory)
 
-  # Error checking
-  if not 'Geometry' in str(type(geometry)):
-    py_printf('ERROR', 'Unable to plot the fission rates ' + \
-              'since input did not contain a geometry class object')
+  if not 'Solver' in str(type(solver)):
+    py_printf('ERROR', 'Unable to plot the flux vs. energy ' + \
+              'since input did not contain a Solver class object')
+
+  geometry = solver.getGeometry()
+  num_fsrs = geometry.getNumFSRs()
+  num_groups = geometry.getNumEnergyGroups()
+
+  if isinstance(fsrs, (tuple, list, np.ndarray)):
+    for fsr in fsrs:
+      if not is_integer(fsr):
+        py_printf('ERROR', 'Unable to plot the flux vs. energy since ' + \
+                  'the fsrs contains %s which is not an int', str(fsr))
+
+      elif fsr < 0:
+        py_printf('ERROR', 'Unable to plot the flux vs. energy since ' + \
+                  'the fsrs contains %d which is less than zero', fsr)
+
+      elif fsr >= num_fsrs:
+        py_printf('ERROR', 'Unable to plot the flux vs. energy since ' + \
+                  'the fsrs contains %d which is greater than the ' + \
+                  'total number of FSRs %d', fsr, num_fsrs)
+
+  else:
+    py_printf('ERROR', 'Unable to plot the flux vs. energy since ' + \
+              'the fsrs is not a Python tuple, list or NumPy array')
+
+  if isinstance(group_bounds, (tuple, list, np.ndarray)):
+
+    if not all(low < up for low, up in zip(group_bounds, group_bounds[1:])):
+      py_printf('ERROR', 'Unable to plot the flux vs. energy since the ' + \
+                'energy group bounds are not monotonically increasing')
+
+    elif len(group_bounds) != geometry.getNumEnergyGroups()+1:
+      py_printf('ERROR', 'Unable to plot the flux vs. energy since the ' + \
+                'group bounds does not correspond to %d groups', num_groups)
+
+    for bound in group_bounds:
+      if not is_integer(bound) and not is_float(bound):
+        py_printf('ERROR', 'Unable to plot the flux vs. energy since the ' + \
+                  'group bounds contains %s which is not a number', str(fsr))
+
+      elif bound < 0:
+        py_printf('ERROR', 'Unable to plot the flux vs. energy since the ' + \
+                  'group bounds contains %f which is less than zero', bound)
+
+  elif group_bounds is None:
+    group_bounds = np.arange(num_groups+1, dtype=np.int)
+    loglog = False
+
+  else:
+    py_printf('ERROR', 'Unable to plot the flux vs. energy since ' + \
+              'the group bounds is not a Python tuple, list or NumPy array')
+
+  py_printf('NORMAL', 'Plotting the scalar fluxes vs. energy...')
+
+  # Compute difference in energy bounds for each group
+  group_deltas = np.ediff1d(group_bounds)
+  group_bounds = np.flipud(group_bounds)
+  group_deltas = np.flipud(group_deltas)
+ 
+  # Iterate over all flat source regions
+  for fsr in fsrs:
+
+    # Allocate memory for an array of this FSR's fluxes
+    fluxes = np.zeros(num_groups, dtype=np.float)
+
+    # Extract the flux in each energy group
+    for group in range(num_groups):
+        fluxes[group] = solver.getFlux(fsr, group+1)
+
+    # Normalize fluxes to the total integrated flux
+    if norm:
+      fluxes /= np.sum(group_deltas * fluxes)
+
+    # Initialize a separate plot for this FSR's fluxes
+    fig = plt.figure()
+
+    # Draw horizontal/vertical lines on the plot for each energy group
+    for group in range(num_groups):
+    
+      # Horizontal line
+      if loglog:
+        plt.loglog(group_bounds[group:group+2], [fluxes[group]]*2, 
+                   linewidth=3, c='b', label='openmoc', linestyle='-')
+      else:
+        plt.plot(group_bounds[group:group+2], [fluxes[group]]*2, 
+                 linewidth=3, c='b', label='openmoc', linestyle='-')
+
+      # Vertical lines
+      if group < num_groups - 1:
+        if loglog:
+          plt.loglog([group_bounds[group+1]]*2, fluxes[group:group+2], 
+                     c='b', linestyle='--')
+        else:
+          plt.plot([group_bounds[group+1]]*2, fluxes[group:group+2], 
+                   c='b', linestyle='--')
+
+    plt.xlabel('Energy')
+    plt.ylabel('Flux')
+    plt.xlim((min(group_bounds), max(group_bounds)))
+    plt.grid()
+    plt.title('FSR {0} Flux ({1} groups)'.format(fsr, num_groups))
+    filename = directory + 'flux-fsr-' + str(fsr) + '.png'
+    plt.savefig(filename, bbox_inches='tight')
+    plt.close(fig)
+
+
+##
+# @brief This method plots a color-coded 2D surface plot representing the 
+#        FSR fission rates in the Geometry.
+# @details The Solver must have converged the flat source sources prior to
+#          calling this routine. A user may invoke this function from an 
+#          OpenMOC Python file as follows:
+#
+# @code
+#         openmoc.plotter.plot_fission_rates(solver)
+# @endcode
+#
+# @param solver a Solver object that has converged the source for the Geometry
+# @param gridsize an optional number of grid cells for the plot
+# @param xlim optional list/tuple of the minimim/maximum x-coordinates
+# @param ylim optional list/tuple of the minimim/maximum y-coordinates
+def plot_fission_rates(solver, gridsize=250, xlim=None, ylim=None):
+
+  global subdirectory
+
+  directory = openmoc.get_output_directory() + subdirectory
+
+  # Make directory if it does not exist
+  if not os.path.exists(directory):
+    os.makedirs(directory)
 
   if not 'Solver' in str(type(solver)):
     py_printf('ERROR', 'Unable to plot the fission rates ' + \
@@ -822,7 +954,7 @@ def plot_fission_rates(geometry, solver, gridsize=250, xlim=None, ylim=None):
       x = coords['y'][i]
       y = coords['x'][j]
 
-      point = LocalCoords(x, y)
+      point = openmoc.LocalCoords(x, y)
       point.setUniverse(geometry.getRootUniverse())
       geometry.findCellContainingCoords(point)
       fsr_id = geometry.getFSRId(point)
@@ -841,6 +973,95 @@ def plot_fission_rates(geometry, solver, gridsize=250, xlim=None, ylim=None):
   plt.title('Flat Source Region Fission Rates')
   filename = directory + 'fission-rates.png'
   fig.savefig(filename, bbox_inches='tight')
+
+
+##
+# @brief This method plots a color-coded 2D surface plot representing the 
+#        FSR scalar fluxes for various eigenmodes from an IRAMSolver.
+# @details The IRAMSolver must have computed the eigenmodes prior to
+#          calling this routine. A user may invoke this function from 
+#          an OpenMOC Python file as follows:
+#
+# @code
+#         openmoc.plotter.plot_eigenmode_fluxes(iramsolver, energy_groups=[1,7])
+# @endcode
+#
+# @param iramsolver an IRAMSolver object that has computed the eigenmodes
+# @param eigenmodes a Python list of integer eigenmodes to plot
+# @param energy_groups a Python list of integer energy groups to plot
+# @param gridsize an optional number of grid cells for the plot
+# @param xlim optional list/tuple of the minimim/maximum x-coordinates
+# @param ylim optional list/tuple of the minimim/maximum y-coordinates
+def plot_eigenmode_fluxes(iramsolver, eigenmodes=[], energy_groups=[1], 
+                          gridsize=250, xlim=None, ylim=None):
+
+  global subdirectory
+
+  directory = openmoc.get_output_directory() + subdirectory
+
+  # Make directory if it does not exist
+  if not os.path.exists(directory):
+    os.makedirs(directory)
+
+  if not 'IRAMSolver' in str(type(iramsolver)):
+    py_printf('ERROR', 'Unable to plot the eigenmode fluxes ' + \
+              'since input did not contain an IRAMSolver class object')
+
+  if isinstance(eigenmodes, (list, tuple, np.ndarray)):
+
+    # If eigenmodes parameters is empty list, plot all eigenmodes
+    if len(eigenmodes) == 0:
+      eigenmodes = np.arange(1, iramsolver._num_modes+1)
+
+    for mode in eigenmodes:
+      if not is_integer(mode):
+        py_printf('ERROR', 'Unable to plot the eigenmode flux since the ' + \
+                  'eigenmodes contains %s which is not a number', str(mode))
+
+      elif mode <= 0:
+        py_printf('ERROR', 'Unable to plot the eigenmode flux since the ' + \
+                  'eigenmodes contains %d which is negative', mode)
+
+      elif mode > iramsolver._num_modes:
+        py_printf('ERROR', 'Unable to plot the eigenmode flux since the ' + \
+                  'eigenmodes contains %d but the IRAMSolver only ' + \
+                  'computed %d modes', mode)
+
+  else:
+    py_printf('ERROR', 'Unable to plot the eigenmode flux since the ' + \
+              'eigenmodes is not a Python tuple/list or NumPy array')
+
+  py_printf('NORMAL', 'Plotting the eigenmode fluxes...')
+
+  # Extract the MOC Solver from the IRAMSolver
+  moc_solver = iramsolver._moc_solver
+
+  # Loop over each eigenmode
+  for mode in eigenmodes:
+  
+    # Extract the eigenvector for this eigenmode from the IRAMSolver
+    eigenvec = iramsolver._eigenvectors[:,mode-1]
+
+    # Convert it into a form that SWIG will be happy with
+    eigenvec = np.squeeze(np.ascontiguousarray(eigenvec))
+    eigenvec = np.real(eigenvec).astype(iramsolver._precision)
+
+    # Ensure the primary eigenvector is positive
+    if(mode-1 == 0):
+      eigenvec = np.abs(eigenvec)
+        
+    # Insert eigenvector into MOC Solver object
+    moc_solver.setFluxes(eigenvec)
+
+    # Set subdirectory folder for this eigenmode
+    num_digits = len(str(max(eigenmodes)))
+    subdirectory = '/plots/eig-{0}-flux/'.format(str(mode).zfill(num_digits))
+
+    # Plot this eigenmode's spatial fluxes 
+    plot_spatial_fluxes(moc_solver, energy_groups, gridsize, xlim, ylim)
+
+  # Reset global subdirectory
+  subdirectory = '/plots/'
 
 
 ##

@@ -4,7 +4,16 @@
 /*
  * @brief Constructor initializes an empty Track.
  */
-Track::Track() { }
+Track::Track() {
+
+  /* Initialize the periodic track index to -1, indicating it has not
+   * been set */
+  _periodic_track_index = -1;
+
+  /* Initialize the reflective track index to -1, indicating it has not
+   * been set */
+  _reflective_track_index = -1;
+}
 
 
 
@@ -65,64 +74,114 @@ void Track::setAzimAngleIndex(const int index) {
 
 
 /**
+ * @brief Set the index of a track in a periodic cycle.
+ * @details Tracks form periodic track cycles as they traverse the geometry.
+ *          Tracks can be arbitrarily decomposed into periodic track cycles
+ *          and this index indicates the index in a particular cycle.
+ * @param index of the track in a periodic cycle
+ */
+void Track::setPeriodicTrackIndex(const int index) {
+  _periodic_track_index = index;
+}
+
+
+/**
+ * @brief Set the index of a track in a reflective cycle.
+ * @details Tracks form reflective track cycles as they traverse the geometry.
+ *          Tracks can be arbitrarily decomposed into reflective track cycles
+ *          and this index indicates the index in a particular cycle.
+ * @param index of the track in a reflective cycle
+ */
+void Track::setReflectiveTrackIndex(const int index) {
+  _reflective_track_index = index;
+}
+
+
+/**
  * @brief Adds a segment pointer to this Track's list of segments.
  * @details This method assumes that segments are added in order of their
  *          starting location from the Track's start point.
- * @param segment a pointer to the segment
+ * @param to_add a pointer to the segment to add
  */
-void Track::addSegment(segment* segment) {
-
+void Track::addSegment(segment* to_add) {
   try {
-    _segments.push_back(*segment);
+    _segments.push_back(*to_add);
   }
   catch (std::exception &e) {
-      log_printf(ERROR, "Unable to add a segment to Track. Backtrace:"
-                 "\n%s", e.what());
+    log_printf(ERROR, "Unable to add a segment to Track");
   }
+}
+
+
+/**
+ * @brief Removes a segment from this Track's list of segments.
+ * @param index the index of the segment to remove
+ */
+void Track::removeSegment(int index) {
+  try {
+    _segments.erase(_segments.begin()+index);
+  }
+  catch (std::exception &e) {
+    log_printf(ERROR, "Unable to remove a segment from Track");
+  }  
+}
+
+
+/**
+ * @brief Inserts a segment pointer into this Track's list of segments.
+ * @details This method appends the new segment directly behind another
+ *          segment in the Track. This is a helper method for the
+ *          TrackGenerator::splitTracks(...) routine.
+ * @param index the index of the segment to insert behind in the list
+ * @param segment a pointer to the segment to insert
+ */
+void Track::insertSegment(int index, segment* segment) {
+  try {
+    _segments.insert(_segments.begin()+index, *segment);
+  }
+  catch (std::exception &e) {
+    log_printf(ERROR, "Unable to insert a segment into Track");
+  }  
 }
 
 
 /**
  * @brief Sets the direction in which the flux leaving this Track along its
- *        "forward" direction is passed to reflective Track for boundary
- *        conditions.
+ *        "forward" direction is passed.
  * @details Sets whether or not to pass the outgoing flux from this Track
  *          along its "forward" direction to the "forward" direction (false)
- *          or "reverse" direction (true) of the Track reflecting out of this
- *          one at the boundary. This is used for reflective boundary
- *          conditions.
- * @param refl_in the "forward" (false) or "reverse (true) direction
+ *          or "reverse" direction (true) of the next Track after intersection
+ *          with the geometry boundary.
+ * @param next_in the "forward" (false) or "reverse (true) direction
  */
-void Track::setReflIn(const bool refl_in) {
-  _refl_in = refl_in;
+void Track::setNextIn(const bool next_in) {
+  _next_in = next_in;
 }
 
 
 /**
- * @brief Sets the direction in which the flux leaving this Track along
- *        its "reverse" direction is passed to reflective track for boundary
- *        conditions.
+ * @brief Sets the direction in which the flux leaving this Track along its
+ *        "reverse" direction is passed.
  * @details Sets whether or not to pass the outgoing flux from this Track
  *          along its "reverse" direction to the "forward" direction (false)
- *          or "reverse" direction (true) of the Track reflecting out of this
- *          one at the boundary. This is used for reflective boundary
- *          conditions.
- * @param refl_out "forward" (false) or "reverse (true) direction
+ *          or "reverse" direction (true) of the next Track after intersection
+ *          with the geometry boundary.
+ * @param next_out the "forward" (false) or "reverse (true) direction
  */
-void Track::setReflOut(const bool refl_out) {
-  _refl_out = refl_out;
+void Track::setNextOut(const bool next_out) {
+  _next_out = next_out;
 }
 
 
 /**
  * @brief Sets the boundary condition for the incoming flux along the Track's
  *        "forward" direction.
- * @details The boolean represents vacuum (false) or reflective (true)
- *          boundary conditions.
+ * @details The boundaryType represents vacuum (0), reflective (1), or 
+ *          periodic (2) boundary conditions.
  * @param bc_in boundary condition for the incoming flux in the "forward"
  *        direction
  */
-void Track::setBCIn(const bool bc_in) {
+void Track::setBCIn(const boundaryType bc_in) {
   _bc_in = bc_in;
 }
 
@@ -130,19 +189,19 @@ void Track::setBCIn(const bool bc_in) {
 /**
  * @brief Sets the boundary condition for the incoming flux along the Track's
  *        "reverse" direction.
- * @details The boolean represents vacuum (false) or reflective (true)
- *          boundary conditions.
+ * @details The boundaryType represents vacuum (0), reflective (1), or 
+ *          periodic (2) boundary conditions.
  * @param bc_out boundary condition for the incoming flux in the "reverse"
  *        direction
  */
-void Track::setBCOut(const bool bc_out) {
+void Track::setBCOut(const boundaryType bc_out) {
   _bc_out = bc_out;
 }
 
 
 /**
- * @brief Sets the track reflecting into this Track's "forward" direction.
- * @param track_in pointer to the Track reflecting into the "forward" direction
+ * @brief Sets the track going out along this Track's "forward" direction.
+ * @param track_in pointer to the Track going out in the "forward" direction
  */
 void Track::setTrackIn(Track* track_in) {
   _track_in = track_in;
@@ -150,8 +209,8 @@ void Track::setTrackIn(Track* track_in) {
 
 
 /**
- * @brief Sets the track reflecting into this Track's "reverse" direction.
- * @param track_out pointer to the Track reflecting into the "reverse" direction
+ * @brief Sets the track going out along this Track's "reverse" direction.
+ * @param track_out pointer to the Track going out in the "reverse" direction
  */
 void Track::setTrackOut(Track* track_out) {
   _track_out = track_out;
@@ -159,73 +218,34 @@ void Track::setTrackOut(Track* track_out) {
 
 
 /**
- * @brief Sets the first index of the track reflecting into this Track's
- *        "forward" direction in the 2D jagged array of tracks.
- * @param i the first index of the incoming track along the "forward" direction
+ * @brief Returns whether to give the outgoing flux to the "forward" (false) or
+ *        "reverse" (true) direction of the next Track when traveling along
+ *        this Tracks's "forward" direction.
+ * @return "forward" (false) "reverse" (true) direction of outgoing Track
  */
-void Track::setTrackInI(int i) {
-  _track_in_i = i;
-}
-
-
-/**
- * @brief Sets the second index of the track reflecting into this Track's
- *        "forward" direction in the 2D jagged array of tracks.
- * @param j the second index of the incoming track along the "forward" direction
- */
-void Track::setTrackInJ(int j) {
-  _track_in_j = j;
-}
-
-
-/**
- * @brief Sets the first index of the track reflecting into this Track's
- *        "reverse" direction in the 2D jagged array of Tracks.
- * @param i the first index of the incoming Track along the "reverse" direction
- */
-void Track::setTrackOutI(int i) {
-  _track_out_i = i;
-}
-
-
-/**
- * @brief Sets the second index of the Track reflecting into this Track's
- *        "reverse" direction in the 2D jagged array of tracks.
- * @param j the second index of the incoming Track along the "reverse" direction
- */
-void Track::setTrackOutJ(int j) {
-  _track_out_j = j;
+bool Track::isNextIn() const {
+  return _next_in;
 }
 
 
 /**
  * @brief Returns whether to give the outgoing flux to the "forward" (false) or
- *        "reverse" (true) direction of the Track reflecting out of this one
- *        along its "forward" direction.
+ *        "reverse" (true) direction of the next Track when traveling along
+ *        this Track's "reverse" direction.
  * @return "forward" (false) "reverse" (true) direction of outgoing Track
  */
-bool Track::isReflIn() const {
-  return _refl_in;
-}
-
-
-/**
- * @brief Returns whether to give the outgoing flux to the "forward" (false) or
- *        "reverse" (true) direction of the Track reflecting out of this one
- *        along its "reverse" direction.
- * @return "forward" (false) "reverse" (true) direction of outgoing Track
- */
-bool Track::isReflOut() const {
-  return _refl_out;
+bool Track::isNextOut() const {
+  return _next_out;
 }
 
 
 /**
  * @brief Returns the boundary condition for the flux along the Track's
  *        "forward" direction.
- * @return vacuum (false) or reflective (true) reflective boundary conditions
+ * @return vacuum (0), reflective (1), or periodic (2) reflective 
+ *         boundary conditions
  */
-bool Track::getBCIn() const {
+boundaryType Track::getBCIn() const {
   return _bc_in;
 }
 
@@ -233,10 +253,45 @@ bool Track::getBCIn() const {
 /**
  * @brief Returns the boundary condition for the flux along the Track's
  *        "reverse" direction.
- * @return vacuum (false) or reflective (true) reflective boundary conditions
+ * @return vacuum (0), reflective (1), or periodic (2) reflective 
+ *         boundary conditions
  */
-bool Track::getBCOut() const {
+boundaryType Track::getBCOut() const {
   return _bc_out;
+}
+
+
+/**
+ * @brief Returns a boolean to indicate whether the outgoing flux along this
+ *        Track's "forward" direction should be transferred to the outgoing
+ *        Track.
+ * @details The bool with be false for vacuum BCs and true for all other BCs.
+ * @return bool indicating whether the flux should be passed when tracking in
+ *         the "forward" direction.
+ */
+bool Track::getTransferFluxIn() const {
+
+  if (_bc_in == VACUUM)
+    return false;
+  else
+    return true;
+}
+
+
+/**
+ * @brief Returns a boolean to indicate whether the outgoing flux along this
+ *        Track's "reverse" direction should be transferred to the incoming
+ *        Track.
+ * @details The bool with be false for vacuum BCs and true for all other BCs.
+ * @return bool indicating whether the flux should be passed when tracking in
+ *         the "reverse" direction.
+ */
+bool Track::getTransferFluxOut() const {
+
+  if (_bc_out == VACUUM)
+    return false;
+  else
+    return true;
 }
 
 
@@ -278,43 +333,20 @@ int Track::getAzimAngleIndex() const {
 
 
 /**
- * @brief Returns the first index of the Track reflecting out of this one along
- *        its "forward" direction in the 2D jagged array of all Tracks.
- * @return the first index of the reflecting Track
+ * @brief Get the index of a track in a periodic cycle.
+ * @return index of the track in a periodic cycle
  */
-int Track::getTrackInI() const {
-  return _track_in_i;
+int Track::getPeriodicTrackIndex() const {
+  return _periodic_track_index;
 }
 
 
 /**
- * @brief Returns the second index of the Track reflecting out of this one along
- *        its "forward" direction in the 2D jagged array of all Tracks.
- * @return the second index of the reflecting Track
+ * @brief Get the index of a track in a reflective cycle.
+ * @return index of the track in a reflective cycle
  */
-int Track::getTrackInJ() const {
-  return _track_in_j;
-}
-
-
-
-/**
- * @brief Returns the first index of the Track reflecting out of this one along
- *        its "reverse" direction in the 2D jagged array of all Tracks.
- * @return the first index of the reflecting Track
- */
-int Track::getTrackOutI() const {
-  return _track_out_i;
-}
-
-
-/**
- * @brief Returns the second index of the Track reflecting out of this one along
- *        its "reverse" direction in the 2D jagged array of all Tracks.
- * @return the second index of the reflecting Track
- */
-int Track::getTrackOutJ() const {
-  return _track_out_j;
+int Track::getReflectiveTrackIndex() const {
+  return _reflective_track_index;
 }
 
 

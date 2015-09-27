@@ -11,13 +11,16 @@
 
 #ifdef __cplusplus
 #define _USE_MATH_DEFINES
+#ifdef SWIG
+#include "Python.h"
+#endif
+#include "Track.h"
+#include "Geometry.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <unistd.h>
 #include <omp.h>
-#include "Track.h"
-#include "Geometry.h"
 #endif
 
 
@@ -44,14 +47,12 @@ private:
   /** An integer array of the number of Tracks for each azimuthal angle */
   int* _num_tracks;
 
-  /** The total number of Tracks for all azimuthal angles */
-  int _tot_num_tracks;
+  /** An integer array with the number of Tracks in each parallel track group */
+  int* _num_tracks_by_parallel_group;
 
-  /** An integer array of the number of segments per Track  */
-  int* _num_segments;
-
-  /** The total number of segments for all Tracks */
-  int _tot_num_segments;
+  /** The number of the track groups needed to ensure data races don't occur
+   *  during the Solver's transportSweep */
+  int _num_parallel_track_groups;
 
   /** An integer array of the number of Tracks starting on the x-axis for each
    *  azimuthal angle */
@@ -61,14 +62,14 @@ private:
    *  azimuthal angle */
   int* _num_y;
 
-  /** The maximum optical length a track is allowed to have */
-  FP_PRECISION _max_optical_length;
-
   /** An array of the azimuthal angle quadrature weights */
   FP_PRECISION* _azim_weights;
 
   /** A 2D ragged array of Tracks */
   Track** _tracks;
+
+  /** A 1D array of Track pointers arranged by parallel group */
+  Track** _tracks_by_parallel_group;
 
   /** Pointer to the Geometry */
   Geometry* _geometry;
@@ -88,12 +89,15 @@ private:
   void initializeTrackFileDirectory();
   void initializeTracks();
   void recalibrateTracksToOrigin();
+  void initializeTrackUids();
   void initializeBoundaryConditions();
+  void initializeTrackCycleIndices(boundaryType bc);
   void segmentize();
   void dumpTracksToFile();
   bool readTracksFromFile();
 
 public:
+
   TrackGenerator(Geometry* geometry, int num_azim, double spacing);
   virtual ~TrackGenerator();
 
@@ -102,21 +106,23 @@ public:
   double getTrackSpacing();
   Geometry* getGeometry();
   int getNumTracks();
-  int* getNumTracksArray();
+  int getNumX(int azim);
+  int getNumY(int azim);
+  int getNumTracksByParallelGroup(int group);
+  int getNumParallelTrackGroups();
   int getNumSegments();
-  int* getNumSegmentsArray();
   Track** getTracks();
+  Track** getTracksByParallelGroup();
   FP_PRECISION* getAzimWeights();
-  FP_PRECISION getMaxOpticalLength();
-  int getTotNumSegments();
-  int getTotNumTracks();
   int getNumThreads();
+  FP_PRECISION* getFSRVolumes();
+  FP_PRECISION getFSRVolume(int fsr_id);
+  FP_PRECISION getMaxOpticalLength();
 
   /* Set parameters */
   void setNumAzim(int num_azim);
   void setTrackSpacing(double spacing);
   void setGeometry(Geometry* geometry);
-  void setMaxOpticalLength(FP_PRECISION max_optical_length);
   void setNumThreads(int num_threads);
 
   /* Worker functions */
@@ -124,6 +130,9 @@ public:
   void retrieveTrackCoords(double* coords, int num_tracks);
   void retrieveSegmentCoords(double* coords, int num_segments);
   void generateTracks();
+  void correctFSRVolume(int fsr_id, FP_PRECISION fsr_volume);
+  void generateFSRCentroids();
+  void splitSegments(FP_PRECISION max_optical_length);
 };
 
 #endif /* TRACKGENERATOR_H_ */

@@ -9,31 +9,13 @@
 # @author William Boyd (wboyd@mit.edu)
 # @date April 27, 2013
 
-import sys
-
-## @var openmoc
-#  @brief The openmoc module in use in the Python script using the
-#         openmoc.process module.
-openmoc = ''
-
-# Determine which OpenMOC module is being used
-if 'openmoc.gnu.double' in sys.modules:
-  openmoc = sys.modules['openmoc.gnu.double']
-elif 'openmoc.gnu.single' in sys.modules:
-  openmoc = sys.modules['openmoc.gnu.single']
-elif 'openmoc.intel.double' in sys.modules:
-  openmoc = sys.modules['openmoc.intel.double']
-elif 'openmoc.intel.single' in sys.modules:
-  openmoc = sys.modules['openmoc.intel.single']
-elif 'openmoc.bgq.double' in sys.modules:
-  openmoc = sys.modules['openmoc.bgq.double']
-elif 'openmoc.bgq.single' in sys.modules:
-  openmoc = sys.modules['openmoc.bgq.single']
-else:
-  from openmoc import *
-
-import numpy as np
 import os
+import re 
+import mmap
+import sys
+import numpy as np
+
+import openmoc
 
 # For Python 2.X.X
 if (sys.version_info[0] == 2):
@@ -88,7 +70,7 @@ def is_float(val):
 def compute_fission_rates(solver, use_hdf5=False):
 
   # create directory and filename
-  directory = get_output_directory() + '/fission-rates/'
+  directory = openmoc.get_output_directory() + '/fission-rates/'
   filename = 'fission-rates'
 
   # Make directory if it does not exist
@@ -111,7 +93,7 @@ def compute_fission_rates(solver, use_hdf5=False):
 
       # Get the linked list of LocalCoords
       point = geometry.getFSRPoint(fsr)
-      coords = LocalCoords(point.getX(), point.getY())
+      coords = openmoc.LocalCoords(point.getX(), point.getY())
       coords.setUniverse(geometry.getRootUniverse())
       geometry.findCellContainingCoords(coords)
       coords = coords.getHighestLevel().getNext()
@@ -123,7 +105,7 @@ def compute_fission_rates(solver, use_hdf5=False):
       # If lowest level sub dictionary already exists, then increment 
       # fission rate; otherwise, set the fission rate.
       while True:
-        if coords.getType() is LAT:
+        if coords.getType() is openmoc.LAT:
           key += 'LAT = ' + str(coords.getLattice().getId()) + ' (' + \
                  str(coords.getLatticeX()) + ', ' + \
                  str(coords.getLatticeY()) + ') : '
@@ -242,12 +224,12 @@ def store_simulation_state(solver, fluxes=False, sources=False,
   else:
     precision = 'single'
 
-  # Determine whether we are using the exponential intrinsic or
+  # Determine whether we are using the exponential
   # linear interpolation for exponential evaluations
-  if solver.isUsingExponentialIntrinsic():
-      method = 'exp intrinsic'
-  else:
+  if solver.isUsingExponentialInterpolation():
     method = 'linear interpolation'
+  else:
+    method = 'exp intrinsic'
 
   # Determine whether the Solver has initialized Coarse Mesh Finite
   # Difference Acceleration (CMFD)
@@ -270,7 +252,7 @@ def store_simulation_state(solver, fluxes=False, sources=False,
   num_azim = track_generator.getNumAzim()
   num_polar = solver.getNumPolarAngles()
   num_iters = solver.getNumIterations()
-  thresh = solver.getSourceConvergenceThreshold()
+  thresh = solver.getConvergenceThreshold()
   tot_time = solver.getTotalTime()
   keff = solver.getKeff()
 
@@ -289,7 +271,7 @@ def store_simulation_state(solver, fluxes=False, sources=False,
     # Get the scalar flux for each FSR and energy group
     for i in range(num_FSRs):
       for j in range(num_groups):
-        scalar_fluxes[i,j] = solver.getFSRScalarFlux(i,j+1)
+        scalar_fluxes[i,j] = solver.getFlux(i,j+1)
 
   # If the user requested to store the FSR sources
   if sources:
@@ -342,7 +324,7 @@ def store_simulation_state(solver, fluxes=False, sources=False,
     time_group.create_dataset('# azimuthal angles', data=num_azim)
     time_group.create_dataset('# polar angles', data=num_polar)
     time_group.create_dataset('# iterations', data=num_iters)
-    time_group.create_dataset('source residual threshold', data=thresh)
+    time_group.create_dataset('convergence threshold', data=thresh)
     time_group.create_dataset('exponential', data=method)
     time_group.create_dataset('floating point', data=precision)
     time_group.create_dataset('CMFD', data=cmfd)
@@ -415,7 +397,7 @@ def store_simulation_state(solver, fluxes=False, sources=False,
     state['# azimuthal angles'] = num_azim
     state['# polar angles'] = num_polar
     state['# iterations'] = num_iters
-    state['source residual threshold'] = thresh
+    state['convergence threshold'] = thresh
     state['exponential'] = method
     state['floating point'] = precision
     state['CMFD'] = cmfd
@@ -436,7 +418,8 @@ def store_simulation_state(solver, fluxes=False, sources=False,
 
     if fission_rates:
       compute_fission_rates(solver, False)      
-      state['fission-rates'] = pickle.load(file('fission-rates/fission-rates.pkl', 'rb'))
+      state['fission-rates'] = \
+        pickle.load(file('fission-rates/fission-rates.pkl', 'rb'))
 
     # Pickle the simulation states to a file
     pickle.dump(sim_states, open(filename, 'wb'))
@@ -444,14 +427,6 @@ def store_simulation_state(solver, fluxes=False, sources=False,
     # Pickle the simulation states to a file
     pickle.dump(sim_states, open(filename, 'wb'))
 
-
-##
-# @brief
-# @details
-
-##
-# @brief
-# @details
 
 ##
 # @brief This method restores all of the data for an OpenMOC simulation from a
@@ -480,7 +455,13 @@ def store_simulation_state(solver, fluxes=False, sources=False,
 # @param directory the directory where to find the simulation state file
 # @return a Python dictionary of key/value pairs for simulation state data
 def restore_simulation_state(filename='simulation-state.h5',
-                              directory='simulation-states'):
+                             directory='simulation-states'):
+
+  filename = directory + '/' + filename
+
+  if not os.path.isfile(filename):
+    py_printf('ERROR', 'Unable restore simulation state since "{0}" ' + \
+              'is not an existing simulation state file'.format(filename))
 
   # If using HDF5
   if '.h5' in filename or '.hdf5' in filename:
@@ -488,7 +469,7 @@ def restore_simulation_state(filename='simulation-state.h5',
     import h5py
 
     # Create a file handle
-    f = h5py.File(directory + '/' + filename, 'r')
+    f = h5py.File(filename, 'r')
 
     states = {}
 
@@ -507,7 +488,6 @@ def restore_simulation_state(filename='simulation-state.h5',
         state = states[day][time]
 
         # Extract simulation data and store it in the sub-dictionary
-
         solver_type = str(dataset['solver type'])
         state['solver type'] = solver_type
 
@@ -583,7 +563,6 @@ def restore_simulation_state(filename='simulation-state.h5',
     import pickle
 
     # Load the dictionary from the pickle file
-    filename = directory + '/' + filename
     states = pickle.load(file(filename, 'rb'))
 
     return states
@@ -595,3 +574,57 @@ def restore_simulation_state(filename='simulation-state.h5',
               '*.h5, *.hdf5, and *.pkl files are supported', filename)
 
     return {}
+
+
+##
+# @brief Parse an OpenMOC log file to obtain a simulation's convergence data.
+# @details This method compiles the eigenvalue and source residuals from each
+#          iteration of an OpenMOC simulation. This data is inserted into a 
+#          Python dictionary under the key names 'eigenvalues' and 'residuals',
+#          along with an integer `# iters`, and returned to the user.
+#
+#          This method may be called from Python as follows:
+# @code
+#          parse_convergence_data(filename='openmoc-XX-XX-XXXX--XX:XX:XX.log')
+# @endcode
+#
+# @param filename the OpenMOC log filename string
+# @param directory the directory where to find the log file
+# @return a Python dictionary of key/value pairs for convergence data
+def parse_convergence_data(filename, directory=''):
+
+  # If the user specified a directory
+  if len(directory) > 0:
+    filename = directory + '/' + filename
+
+  if not os.path.isfile(filename):
+    py_printf('ERROR', 'Unable to parse convergence data since "{0}" is ' + \
+              'not an existing OpenMOC log file'.format(filename))
+
+  # Compile regular expressions to find the residual and eigenvalue data
+  res = re.compile(b'res = ([0-9].[0-9]+E[+|-][0-9]+)')
+  keff = re.compile(b'k_eff = ([0-9]+.[0-9]+)')
+
+  # Parse the eigenvalues
+  with open(filename, 'r+') as f:
+    data = mmap.mmap(f.fileno(), 0)
+    eigenvalues = keff.findall(data)
+
+  # Parse the source residuals
+  with open(filename, 'r+') as f:
+    data = mmap.mmap(f.fileno(), 0)
+    residuals = res.findall(data)
+
+  # Create NumPy arrays of the data
+  eigenvalues = np.array([float(eigenvalue) for eigenvalue in eigenvalues])
+  residuals = np.array([float(residual) for residual in residuals])
+
+  # Find the total number of source iterations
+  num_iters = len(residuals)
+
+  # Store the data in a dictionary to return to the user
+  convergence_data = dict()
+  convergence_data['# iters'] = num_iters
+  convergence_data['eigenvalues'] = eigenvalues
+  convergence_data['residuals'] = residuals
+  return convergence_data

@@ -11,28 +11,9 @@
 # with the same floating point precision as that compiled into the
 # openmoc module used in the main Python input script to OpenMOC.
 
-
 import sys
 
-## @var openmoc
-#  @brief The openmoc module in use in the Python script using the
-#         openmoc.materialize module.
-openmoc = ''
-
-if 'openmoc.gnu.double' in sys.modules:
-  openmoc = sys.modules['openmoc.gnu.double']
-elif 'openmoc.gnu.single' in sys.modules:
-  openmoc = sys.modules['openmoc.gnu.single']
-elif 'openmoc.intel.double' in sys.modules:
-  openmoc = sys.modules['openmoc.intel.double']
-elif 'openmoc.intel.single' in sys.modules:
-  openmoc = sys.modules['openmoc.intel.single']
-elif 'openmoc.bgq.double' in sys.modules:
-  openmoc = sys.modules['openmoc.bgq.double']
-elif 'openmoc.bgq.single' in sys.modules:
-  openmoc = sys.modules['openmoc.bgq.single']
-else:
-  import openmoc
+import openmoc
 
 # For Python 2.X.X
 if (sys.version_info[0] == 2):
@@ -42,8 +23,6 @@ if (sys.version_info[0] == 2):
 else:
   from openmoc.log import *
   from openmoc.process import *
-
-
 
 
 ##
@@ -71,12 +50,11 @@ def materialize(filename):
   if filename.endswith('.h5') or filename.endswith('.hdf5'):
 
     import h5py
-    import numpy as np
 
     # Create a h5py file handle for the file
     try:
       f = h5py.File(filename,'r')
-    except:
+    except IOError:
       py_printf('ERROR', 'Unable to materialize file %s because it ' + \
                   'cannot be opened.  Check the file path.',filename)
 
@@ -86,8 +64,6 @@ def materialize(filename):
                   'not contain an \'Energy Groups\' attribute', filename)
 
     num_groups = f.attrs['Energy Groups']
-
-
 
     # Check that the number of energy groups is an integer
     if not is_integer(num_groups):

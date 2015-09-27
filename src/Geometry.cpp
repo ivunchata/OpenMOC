@@ -18,17 +18,8 @@ void reset_auto_ids() {
  */
 Geometry::Geometry() {
 
-  _num_FSRs = 0;
-
-  _max_seg_length = 0;
-  _min_seg_length = std::numeric_limits<double>::infinity();
-
   /* Initialize CMFD object to NULL */
   _cmfd = NULL;
-
-  /* initialize _num_FSRs lock */
-  _num_FSRs_lock = new omp_lock_t;
-  omp_init_lock(_num_FSRs_lock);
 }
 
 
@@ -37,12 +28,38 @@ Geometry::Geometry() {
  */
 Geometry::~Geometry() {
 
-  /* Free FSR  maps if they were initialized */
-  if (_num_FSRs != 0) {
+  /* Free FSR maps if they were initialized */
+  if (_FSR_keys_map.size() != 0) {
+    fsr_data **values = _FSR_keys_map.values();
+
+    for (int i=0; i<_FSR_keys_map.size(); i++)
+      delete values[i];
+    delete[] values;
+
     _FSR_keys_map.clear();
     _FSRs_to_keys.clear();
     _FSRs_to_material_IDs.clear();
   }
+
+  /* Remove all Materials in the Geometry */
+  std::map<int, Material*> materials = getAllMaterials();
+  std::map<int, Cell*> cells = getAllCells();
+  std::map<int, Universe*> universes = getAllUniverses();
+  std::map<int, Material*>::iterator m_iter;
+  std::map<int, Cell*>::iterator c_iter;
+  std::map<int, Universe*>::iterator u_iter;
+
+  /* Remove all Materials in the Geometry */
+  for (m_iter = materials.begin(); m_iter != materials.end(); ++m_iter)
+    delete m_iter->second;
+
+  /* Remove all Cells in the Geometry */
+  for (c_iter = cells.begin(); c_iter != cells.end(); ++c_iter)
+    delete c_iter->second;
+
+  /* Remove all Universes in the Geometry */
+  for (u_iter = universes.begin(); u_iter != universes.end(); ++u_iter)
+    delete u_iter->second;
 }
 
 
@@ -183,18 +200,8 @@ boundaryType Geometry::getMaxZBoundaryType() {
  * @return number of FSRs
  */
 int Geometry::getNumFSRs() {
-  return _num_FSRs;
+  return _FSRs_to_keys.size();
 }
-
-
-/**
- * @brief Sets the number of flat source regions (FSRs) in the Geometry.
- * @param num_fsrs number of FSRs
- */
-void Geometry::setNumFSRs(int num_fsrs) {
-  _num_FSRs = num_fsrs;
-}
-
 
 /**
  * @brief Returns the number of energy groups for each Material's nuclear data.
@@ -249,7 +256,7 @@ int Geometry::getNumCells() {
   int num_cells = 0;
 
   if (_root_universe != NULL) {
-    std::map<int, Cell*> all_cells = _root_universe->getAllCells();
+    std::map<int, Cell*> all_cells = getAllCells();
     num_cells = all_cells.size();
   }
 
@@ -258,20 +265,60 @@ int Geometry::getNumCells() {
 
 
 /**
- * @brief Return the max Track segment length computed during segmentation (cm)
- * @return max Track segment length (cm)
+ * @brief Return a std::map container of Universe IDs (keys) with Unierses
+ *        pointers (values).
+ * @return a std::map of Universes indexed by Universe ID in the geometry
  */
-double Geometry::getMaxSegmentLength() {
-  return _max_seg_length;
+std::map<int, Universe*> Geometry::getAllUniverses() {
+
+  std::map<int, Universe*> all_universes;
+
+  if (_root_universe != NULL)
+    all_universes = _root_universe->getAllUniverses();
+
+  return all_universes;
 }
 
 
 /**
- * @brief Return the min Track segment length computed during segmentation (cm)
- * @return min Track segment length (cm)
+ * @brief Return a std::map container of Cell IDs (keys) with Cells
+ *        pointers (values).
+ * @return a std::map of Cells indexed by Cell ID in the geometry
  */
-double Geometry::getMinSegmentLength() {
-  return _min_seg_length;
+std::map<int, Cell*> Geometry::getAllCells() {
+
+  std::map<int, Cell*> all_cells;
+
+  if (_root_universe != NULL)
+    all_cells = _root_universe->getAllCells();
+
+  return all_cells;
+}
+
+
+/**
+ * @brief Return a std::map container of Cell IDs (keys) with Cells
+ *        pointers (values).
+ * @return a std::map of Cells indexed by Cell ID in the geometry
+ */
+std::map<int, Cell*> Geometry::getAllMaterialCells() {
+
+  std::map<int, Cell*> all_material_cells;
+  Cell* cell;
+
+  if (_root_universe != NULL) {
+    std::map<int, Cell*> all_cells = getAllCells();
+    std::map<int, Cell*>::iterator iter;
+
+    for (iter = all_cells.begin(); iter != all_cells.end(); ++iter) {
+      cell = (*iter).second;
+
+      if (cell->getType() == MATERIAL)
+        all_material_cells[cell->getId()] = cell;
+    }
+  }
+
+  return all_material_cells;
 }
 
 
@@ -287,46 +334,22 @@ std::map<int, Material*> Geometry::getAllMaterials() {
   Material* material;
 
   if (_root_universe != NULL) {
-    std::map<int, Cell*> all_cells = _root_universe->getAllCells();
+    std::map<int, Cell*> all_cells = getAllMaterialCells();
     std::map<int, Cell*>::iterator iter;
 
     for (iter = all_cells.begin(); iter != all_cells.end(); ++iter) {
       cell = (*iter).second;
 
       if (cell->getType() == MATERIAL) {
-        material = static_cast<CellBasic*>(cell)->getMaterial();
-        all_materials[material->getId()] = material;
+        material = cell->getFillMaterial();
+
+        if (material != NULL)
+          all_materials[material->getId()] = material;
       }
     }
   }
 
   return all_materials;
-}
-
-
-/**
- * @brief Return a std::map container of Cell IDs (keys) with Cells
- *        pointers (values).
- * @return a std::map of Cells indexed by Cell ID in the geometry
- */
-std::map<int, Cell*> Geometry::getAllMaterialCells() {
-
-  std::map<int, Cell*> all_material_cells;
-  Cell* cell;
-
-  if (_root_universe != NULL) {
-    std::map<int, Cell*> all_cells = _root_universe->getAllCells();
-    std::map<int, Cell*>::iterator iter;
-
-    for (iter = all_cells.begin(); iter != all_cells.end(); ++iter) {
-      cell = (*iter).second;
-
-      if (cell->getType() == MATERIAL)
-        all_material_cells[cell->getId()] = cell;
-    }
-  }
-
-  return all_material_cells;
 }
 
 
@@ -343,7 +366,7 @@ Universe* Geometry::getRootUniverse() {
  * @brief Returns a pointer to the CMFD object.
  * @return A pointer to the CMFD object
  */
-Cmfd* Geometry::getCmfd(){
+Cmfd* Geometry::getCmfd() {
   return _cmfd;
 }
 
@@ -361,7 +384,7 @@ void Geometry::setRootUniverse(Universe* root_universe) {
  * @brief Sets the pointer to a CMFD object used for acceleration.
  * @param cmfd a pointer to the CMFD object
  */
-void Geometry::setCmfd(Cmfd* cmfd){
+void Geometry::setCmfd(Cmfd* cmfd) {
   _cmfd = cmfd;
 }
 
@@ -383,12 +406,12 @@ void Geometry::setCmfd(Cmfd* cmfd){
  * @param coords pointer to a LocalCoords object
  * @return returns a pointer to a Cell if found, NULL if no Cell found
  */
-CellBasic* Geometry::findCellContainingCoords(LocalCoords* coords) {
+Cell* Geometry::findCellContainingCoords(LocalCoords* coords) {
 
   Universe* univ = coords->getUniverse();
   Cell* cell;
 
-  if (universe_id == 0){
+  if (univ->getId() == _root_universe->getId()) {
     if (!withinBounds(coords))
       return NULL;
   }
@@ -398,7 +421,7 @@ CellBasic* Geometry::findCellContainingCoords(LocalCoords* coords) {
   else
     cell = static_cast<Lattice*>(univ)->findCell(coords);
 
-  return static_cast<CellBasic*>(cell);
+  return cell;
 }
 
 
@@ -421,7 +444,7 @@ CellBasic* Geometry::findCellContainingCoords(LocalCoords* coords) {
  * @param angle the angle for a trajectory projected from the LocalCoords
  * @return returns a pointer to a cell if found, NULL if no cell found
 */
-CellBasic* Geometry::findFirstCell(LocalCoords* coords, double angle) {
+Cell* Geometry::findFirstCell(LocalCoords* coords, double angle) {
   double delta_x = cos(angle) * TINY_MOVE;
   double delta_y = sin(angle) * TINY_MOVE;
   coords->adjustCoords(delta_x, delta_y);
@@ -457,26 +480,25 @@ Material* Geometry::findFSRMaterial(int fsr_id) {
  *          to be the one at the boundary of the next Cell crossed along the
  *          given trajectory. It will do this by finding the minimum distance
  *          to the surfaces at all levels of the coords hierarchy.
- *          If the LocalCoords is outside the bounds of the Geometry or on
- *          the boundaries this method will return NULL; otherwise it will
- *          return a pointer to the Cell that the LocalCoords will reach
+ *          If the LocalCoords is outside the bounds of the Geometry or on 
+ *          the boundaries this method will return NULL; otherwise it will 
+ *          return a pointer to the Cell that the LocalCoords will reach 
  *          next along its trajectory.
  * @param coords pointer to a LocalCoords object
  * @param angle the angle of the trajectory
  * @return a pointer to a Cell if found, NULL if no Cell found
  */
-CellBasic* Geometry::findNextCell(LocalCoords* coords, double angle) {
+Cell* Geometry::findNextCell(LocalCoords* coords, double angle) {
 
   Cell* cell = NULL;
   double dist;
   double min_dist = std::numeric_limits<double>::infinity();
-  Point surf_intersection;
-
-  /* Find the current Cell */
-  cell = findCellContainingCoords(coords);
 
   /* Get lowest level coords */
   coords = coords->getLowestLevel();
+
+  /* Get the current Cell */
+  cell = coords->getCell();
 
   /* If the current coords is not in any Cell, return NULL */
   if (cell == NULL)
@@ -498,9 +520,9 @@ CellBasic* Geometry::findNextCell(LocalCoords* coords, double angle) {
       }
       /* If we reach a LocalCoord in a Universe, find the distance to the
        * nearest cell surface */
-      else{
-        Universe* universe = coords->getUniverse();
-        dist = universe->minSurfaceDist(coords->getPoint(), angle);
+      else {
+        Cell* cell = coords->getCell();
+        dist = cell->minSurfaceDist(coords->getPoint(), angle);
       }
 
       /* Recheck min distance */
@@ -509,14 +531,14 @@ CellBasic* Geometry::findNextCell(LocalCoords* coords, double angle) {
       /* Ascend one level */
       if (coords->getUniverse() == _root_universe)
         break;
-      else{
+      else {
         coords = coords->getPrev();
         coords->prune();
       }
     }
 
     /* Check for distance to nearest CMFD mesh cell boundary */
-    if (_cmfd != NULL){
+    if (_cmfd != NULL) {
       Lattice* lattice = _cmfd->getLattice();
       dist = lattice->minSurfaceDist(coords->getPoint(), angle);
       min_dist = std::min(dist, min_dist);
@@ -526,6 +548,7 @@ CellBasic* Geometry::findNextCell(LocalCoords* coords, double angle) {
     double delta_x = cos(angle) * (min_dist + TINY_MOVE);
     double delta_y = sin(angle) * (min_dist + TINY_MOVE);
     coords->adjustCoords(delta_x, delta_y);
+
     return findCellContainingCoords(coords);
   }
 }
@@ -539,57 +562,57 @@ CellBasic* Geometry::findNextCell(LocalCoords* coords, double angle) {
  */
 int Geometry::findFSRId(LocalCoords* coords) {
 
-  int fsr_id = 0;
+  int fsr_id;
   LocalCoords* curr = coords;
   curr = coords->getLowestLevel();
-  std::hash<std::string> key_hash_function;
 
   /* Generate unique FSR key */
-  std::size_t fsr_key_hash = key_hash_function(getFSRKey(coords));
+  std::string fsr_key = getFSRKey(coords);
 
   /* If FSR has not been encountered, update FSR maps and vectors */
-  if (_FSR_keys_map.find(fsr_key_hash) == _FSR_keys_map.end()){
+  if (!_FSR_keys_map.contains(fsr_key)) {
 
-    /* Get the cell that contains coords */
-    CellBasic* cell = findCellContainingCoords(curr);
-
-    /* Get the lock */
-    omp_set_lock(_num_FSRs_lock);
-
-    /* Recheck to see if FSR has been added to maps after getting the lock */
-    if (_FSR_keys_map.find(fsr_key_hash) != _FSR_keys_map.end())
-      fsr_id = _FSR_keys_map.at(fsr_key_hash)._fsr_id;
-    else{
-
-        /* Add FSR information to FSR key map and FSR_to vectors */
-      fsr_id = _num_FSRs;
+    /* Try to get a clean copy of the fsr_id, adding the FSR data 
+       if necessary where -1 indicates the key was already added */
+    fsr_id = _FSR_keys_map.insert_and_get_count(fsr_key, NULL);
+    if (fsr_id == -1)
+    {
+      fsr_data volatile* fsr;
+      do {
+        fsr = _FSR_keys_map.at(fsr_key);
+      } while (fsr == NULL);
+      fsr_id = fsr->_fsr_id;
+    }
+    else {
+      
+      /* Add FSR information to FSR key map and FSR_to vectors */
       fsr_data* fsr = new fsr_data;
       fsr->_fsr_id = fsr_id;
+      _FSR_keys_map.at(fsr_key) = fsr;
       Point* point = new Point();
-      point->setCoords(coords->getHighestLevel()->getX(),
+      point->setCoords(coords->getHighestLevel()->getX(), 
                        coords->getHighestLevel()->getY());
+      
+      /* Get the cell that contains coords */
+      Cell* cell = findCellContainingCoords(curr);
       fsr->_point = point;
-      _FSR_keys_map[fsr_key_hash] = *fsr;
-      _FSRs_to_keys.push_back(fsr_key_hash);
-      _FSRs_to_material_IDs.push_back(cell->getMaterial()->getId());
+      fsr->_mat_id = cell->getFillMaterial()->getId();
 
-      /* If CMFD acceleration is on, add FSR to CMFD cell */
-      if (_cmfd != NULL){
-        int cmfd_cell = _cmfd->findCmfdCell(coords->getHighestLevel());
-        _cmfd->addFSRToCell(cmfd_cell, fsr_id);
-      }
-
-      /* Increment FSR counter */
-      _num_FSRs++;
+      /* If CMFD acceleration is on, add FSR CMFD cell to FSR data */
+      if (_cmfd != NULL)
+        fsr->_cmfd_cell = _cmfd->findCmfdCell(coords->getHighestLevel());
     }
-
-    /* Release lock */
-    omp_unset_lock(_num_FSRs_lock);
-
   }
+  
   /* If FSR has already been encountered, get the fsr id from map */
-  else
-    fsr_id = _FSR_keys_map.at(fsr_key_hash)._fsr_id;
+  else {
+    fsr_data volatile* fsr;
+    do {
+      fsr = _FSR_keys_map.at(fsr_key);
+    } while (fsr == NULL);
+
+    fsr_id = fsr->_fsr_id;
+  }
 
   return fsr_id;
 }
@@ -605,16 +628,14 @@ int Geometry::getFSRId(LocalCoords* coords) {
 
   int fsr_id = 0;
   std::string fsr_key;
-  std::hash<std::string> key_hash_function;
 
   try{
     fsr_key = getFSRKey(coords);
-    fsr_id = _FSR_keys_map.at(key_hash_function(fsr_key))._fsr_id;
+    fsr_id = _FSR_keys_map.at(fsr_key)->_fsr_id;
   }
   catch(std::exception &e) {
     log_printf(ERROR, "Could not find FSR ID with key: %s. Try creating "
-               "geometry with finer track laydown. "
-               "Backtrace:%s", fsr_key.c_str(), e.what());
+               "geometry with finer track spacing", fsr_key.c_str());
   }
 
   return fsr_id;
@@ -631,11 +652,30 @@ Point* Geometry::getFSRPoint(int fsr_id) {
   Point* point;
 
   try{
-    point = _FSR_keys_map.at(_FSRs_to_keys.at(fsr_id))._point;
+    point = _FSR_keys_map.at(_FSRs_to_keys.at(fsr_id))->_point;
   }
   catch(std::exception &e) {
-    log_printf(ERROR, "Could not find characteristic point in FSR: %i. "
-               "Backtrace:%s", fsr_id, e.what());
+    log_printf(ERROR, "Could not find characteristic point in FSR: %d", fsr_id);
+  }
+
+  return point;
+}
+
+
+/**
+ * @brief Return the centroid for a given FSR ID
+ * @param fsr_id the FSR ID
+ * @return the FSR's centroid
+ */
+Point* Geometry::getFSRCentroid(int fsr_id) {
+
+  Point* point;
+
+  try{
+    point = _FSR_keys_map.at(_FSRs_to_keys.at(fsr_id))->_centroid;
+  }
+  catch(std::exception &e) {
+    log_printf(ERROR, "Could not find centroid in FSR: %d.", fsr_id);
   }
 
   return point;
@@ -660,7 +700,7 @@ std::string Geometry::getFSRKey(LocalCoords* coords) {
   std::ostringstream curr_level_key;
 
   /* If CMFD is on, get CMFD latice cell and write to key */
-  if (_cmfd != NULL){
+  if (_cmfd != NULL) {
       curr_level_key << _cmfd->getLattice()->getLatX(curr->getPoint());
       key << "CMFD = (" << curr_level_key.str() << ", ";
       curr_level_key.str(std::string());
@@ -670,7 +710,7 @@ std::string Geometry::getFSRKey(LocalCoords* coords) {
 
   /* Descend the linked list hierarchy until the lowest level has
    * been reached */
-  while(curr != NULL){
+  while (curr != NULL) {
 
     /* Clear string stream */
     curr_level_key.str(std::string());
@@ -687,7 +727,7 @@ std::string Geometry::getFSRKey(LocalCoords* coords) {
       curr_level_key << curr->getLatticeY();
       key << curr_level_key.str() << ") : ";
     }
-    else{
+    else {
       /* write universe ID to key */
       curr_level_key << curr->getUniverse()->getId();
       key << "UNIV = " << curr_level_key.str() << " : ";
@@ -726,9 +766,6 @@ void Geometry::subdivideCells() {
   std::map<int, Universe*> all_universes = _root_universe->getAllUniverses();
   std::map<int, Universe*>::iterator iter;
 
-  std::map<int, Cell*>::iterator iter1;
-  std::map<int, Cell*> cells;
-
   /* Loop over all Universe in the Geometry and instruct each to inform
    * their Cells to subdivide into rings and sectors as specified by
    * the user during Cell instantiation */
@@ -743,19 +780,18 @@ void Geometry::subdivideCells() {
  * @details This method is intended to be called by the user before initiating
  *          source iteration. This method first subdivides all Cells by calling
  *          the Geometry::subdivideCells() method. Then it initializes the CMFD
- *          object.
+ *          object. 
  */
 void Geometry::initializeFlatSourceRegions() {
 
   /* Subdivide Cells into sectors and rings */
   subdivideCells();
 
+  /* Build collections of neighbor Cells for optimized ray tracing */
+  _root_universe->buildNeighbors();
+
   /* Create map of Material IDs to Material pointers */
   _all_materials = getAllMaterials();
-
-  /* Initialize CMFD */
-  if (_cmfd != NULL)
-    initializeCmfd();
 }
 
 
@@ -766,157 +802,151 @@ void Geometry::initializeFlatSourceRegions() {
  *          intersection points with FSRs as the Track crosses through the
  *          Geometry and creates segment structs and adds them to the Track.
  * @param track a pointer to a track to segmentize
- * @param max_optical_length the maximum optical length a segment is allowed to
- *          have
  */
-void Geometry::segmentize(Track* track, FP_PRECISION max_optical_length) {
+void Geometry::segmentize(Track* track) {
 
   /* Track starting Point coordinates and azimuthal angle */
   double x0 = track->getStart()->getX();
   double y0 = track->getStart()->getY();
   double phi = track->getPhi();
+  double delta_x, delta_y;
 
   /* Length of each segment */
-  FP_PRECISION segment_length;
-  Material* segment_material;
+  FP_PRECISION length;
+  Material* material;
   int fsr_id;
-  FP_PRECISION* sigma_t;
-  int min_num_segments;
   int num_segments;
-  int num_groups;
 
   /* Use a LocalCoords for the start and end of each segment */
-  LocalCoords segment_start(x0, y0);
-  LocalCoords segment_end(x0, y0);
-  segment_start.setUniverse(_root_universe);
-  segment_end.setUniverse(_root_universe);
+  LocalCoords start(x0, y0);
+  LocalCoords end(x0, y0);
+  start.setUniverse(_root_universe);
+  end.setUniverse(_root_universe);
 
   /* Find the Cell containing the Track starting Point */
-  Cell* curr = findFirstCell(&segment_end, phi);
+  Cell* curr = findFirstCell(&end, phi);
   Cell* prev;
 
   /* If starting Point was outside the bounds of the Geometry */
   if (curr == NULL)
-    log_printf(ERROR, "Could not find a Cell containing the start Point "
-               "of this Track: %s", track->toString().c_str());
+    log_printf(ERROR, "Could not find a material-filled Cell containing the "
+               "start Point of this Track: %s", track->toString().c_str());
 
   /* While the end of the segment's LocalCoords is still within the Geometry,
    * move it to the next Cell, create a new segment, and add it to the
    * Geometry */
   while (curr != NULL) {
 
-    segment_end.copyCoords(&segment_start);
+    end.copyCoords(&start);
 
     /* Find the next Cell along the Track's trajectory */
     prev = curr;
-    curr = findNextCell(&segment_end, phi);
+    curr = findNextCell(&end, phi);
 
-    /* Checks to make sure that new Segment does not have the same start
-     * and end Points */
-    if (segment_start.getX() == segment_end.getX() &&
-      segment_start.getY() == segment_end.getY()) {
+    /* Checks that segment does not have the same start and end Points */
+    if (start.getX() == end.getX() && start.getY() == end.getY())
+      log_printf(ERROR, "Created segment with same start and end "
+                 "point: x = %f, y = %f", start.getX(), start.getY());
 
-      log_printf(ERROR, "Created a Track segment with the same start and end "
-                 "point: x = %f, y = %f", segment_start.getX(),
-                  segment_start.getY());
+    /* Find the segment length, Material and FSR ID */
+    length = FP_PRECISION(end.getPoint()->distanceToPoint(start.getPoint()));
+    material = prev->getFillMaterial();
+    fsr_id = findFSRId(&start);
+
+    /* Create a new Track segment */
+    segment* new_segment = new segment;
+    new_segment->_material = material;
+    new_segment->_length = length;
+    new_segment->_region_id = fsr_id;
+
+    log_printf(DEBUG, "segment start x = %f, y = %f; end x = %f, y = %f",
+               start.getX(), start.getY(), end.getX(), end.getY());
+
+    /* Save indicies of CMFD Mesh surfaces that the Track segment crosses */
+    if (_cmfd != NULL) {
+
+      /* Find cmfd cell that segment lies in */
+      int cmfd_cell = _cmfd->findCmfdCell(&start);
+
+      /* Reverse nudge from surface to determine whether segment start or end
+       * points lie on a CMFD surface. */
+      delta_x = cos(phi) * TINY_MOVE;
+      delta_y = sin(phi) * TINY_MOVE;
+      start.adjustCoords(-delta_x, -delta_y);
+      end.adjustCoords(-delta_x, -delta_y);
+
+      new_segment->_cmfd_surface_fwd = _cmfd->findCmfdSurface(cmfd_cell, &end);
+      new_segment->_cmfd_surface_bwd =
+        _cmfd->findCmfdSurface(cmfd_cell, &start);
+      new_segment->_cmfd_corner_fwd = _cmfd->findCmfdCorner(cmfd_cell, &end);
+      new_segment->_cmfd_corner_bwd = _cmfd->findCmfdCorner(cmfd_cell, &start);
+
+      /* Re-nudge segments from surface */
+      start.adjustCoords(delta_x, delta_y);
+      end.adjustCoords(delta_x, delta_y);
     }
 
-    /* Find the segment length between the segment's start and end points */
-    segment_length = FP_PRECISION(segment_end.getPoint()
-                      ->distanceToPoint(segment_start.getPoint()));
-    segment_material = static_cast<CellBasic*>(prev)->getMaterial();
-    sigma_t = segment_material->getSigmaT();
-
-    /* Find the ID of the FSR that contains the segment */
-    fsr_id = findFSRId(&segment_start);
-
-    /* Compute the number of Track segments to cut this segment into to ensure
-     * that it's length is small enough for the exponential table */
-    min_num_segments = 1;
-    num_groups = segment_material->getNumEnergyGroups();
-    for (int g=0; g < num_groups; g++) {
-      num_segments = ceil(segment_length * sigma_t[g] / max_optical_length);
-      if (num_segments > min_num_segments)
-        min_num_segments = num_segments;
-    }
-
-    /* "Cut up" Track segment into sub-segments such that the length of each
-     * does not exceed the size of the exponential table in the Solver */
-    for (int i=0; i < min_num_segments; i++) {
-
-      /* Create a new Track segment */
-      segment* new_segment = new segment;
-      new_segment->_material = segment_material;
-      new_segment->_length = segment_length / FP_PRECISION(min_num_segments);
-
-      /* Update the max and min segment lengths */
-      if (segment_length > _max_seg_length)
-        _max_seg_length = segment_length;
-      if (segment_length < _min_seg_length)
-        _min_seg_length = segment_length;
-
-      log_printf(DEBUG, "segment start x = %f, y = %f, segment end "
-                 "x = %f, y = %f", segment_start.getX(), segment_start.getY(),
-                 segment_end.getX(), segment_end.getY());
-
-      new_segment->_region_id = fsr_id;
-
-      /* Save indicies of CMFD Mesh surfaces that the Track segment crosses */
-      if (_cmfd != NULL){
-
-        /* Find cmfd cell that segment lies in */
-        int cmfd_cell = _cmfd->findCmfdCell(&segment_start);
-
-        /* Reverse nudge from surface to determine whether segment start or end
-         * points lie on a cmfd surface. */
-        double delta_x = cos(phi) * TINY_MOVE;
-        double delta_y = sin(phi) * TINY_MOVE;
-        segment_start.adjustCoords(-delta_x, -delta_y);
-        segment_end.adjustCoords(-delta_x, -delta_y);
-
-        if (i == min_num_segments-1)
-          new_segment->_cmfd_surface_fwd =
-              _cmfd->findCmfdSurface(cmfd_cell, &segment_end);
-        else
-          new_segment->_cmfd_surface_fwd = -1;
-
-        if (i == 0)
-          new_segment->_cmfd_surface_bwd =
-              _cmfd->findCmfdSurface(cmfd_cell, &segment_start);
-        else
-          new_segment->_cmfd_surface_bwd = -1;
-
-        /* Re-nudge segments from surface. */
-        segment_start.adjustCoords(delta_x, delta_y);
-        segment_end.adjustCoords(delta_x, delta_y);
-
-      }
-
-      /* Add the segment to the Track */
-      track->addSegment(new_segment);
-
-    }
+    /* Add the segment to the Track */
+    track->addSegment(new_segment);
   }
 
   log_printf(DEBUG, "Created %d segments for Track: %s",
              track->getNumSegments(), track->toString().c_str());
 
   /* Truncate the linked list for the LocalCoords */
-  segment_start.prune();
-  segment_end.prune();
+  start.prune();
+  end.prune();
+}
 
-  log_printf(DEBUG, "Track %d max. segment length: %f",
-             track->getUid(), _max_seg_length);
-  log_printf(DEBUG, "Track %d min. segment length: %f",
-             track->getUid(), _min_seg_length);
 
-  return;
+/**
+ * @brief Initialize key and material ID vectors for lookup by FSR ID
+ * @detail This function initializes and sets reverse lookup vectors by FSR ID.
+ *      This is called after the FSRs have all been identified and allocated
+ *      during segmentation. This function must be called after 
+ *      Geometry::segmentize() has completed. It should not be called if tracks
+ *      are loaded from a file.
+ */
+void Geometry::initializeFSRVectors() {
+  
+  /* get keys and values from map */
+  std::string *key_list = _FSR_keys_map.keys();
+  fsr_data **value_list = _FSR_keys_map.values();
+
+  /* allocate vectors */
+  int num_FSRs = _FSR_keys_map.size();
+  _FSRs_to_keys = std::vector<std::string>(num_FSRs);
+  _FSRs_to_material_IDs = std::vector<int>(num_FSRs);
+
+  /* fill vectors key and material ID information */
+  #pragma omp parallel for
+  for (int i=0; i < num_FSRs; i++)
+  {
+    std::string key = key_list[i];
+    fsr_data* fsr = value_list[i];
+    int fsr_id = fsr->_fsr_id;
+    _FSRs_to_keys.at(fsr_id) = key;
+    _FSRs_to_material_IDs.at(fsr_id) = fsr->_mat_id;
+  }
+
+  /* add cmfd information serially */
+  if (_cmfd != NULL) {
+    for (int i=0; i < num_FSRs; i++) {
+      fsr_data* fsr = value_list[i];
+      int fsr_id = fsr->_fsr_id;
+      _cmfd->addFSRToCell(fsr->_cmfd_cell, fsr_id);
+    }
+  }
+
+  /* Delete key and value lists */
+  delete[] key_list;
+  delete[] value_list;
 }
 
 
 /**
  * @brief Determines the fissionability of each Universe within this Geometry.
- * @details A Universe is determined fissionable if it contains a CellBasic
+ * @details A Universe is determined fissionable if it contains a Cell
  *          filled by a Material with a non-zero fission cross-section. Note
  *          that this method recurses through all Universes at each level in
  *          the nested Universe hierarchy. Users should only call this method
@@ -993,8 +1023,8 @@ std::string Geometry::toString() {
 
   std::stringstream string;
 
-  std::map<int, Cell*> all_cells = _root_universe->getAllCells();
-  std::map<int, Universe*> all_universes = _root_universe->getAllUniverses();
+  std::map<int, Cell*> all_cells = getAllCells();
+  std::map<int, Universe*> all_universes = getAllUniverses();
 
   std::map<int, Cell*>::iterator cell_iter;
   std::map<int, Universe*>::iterator univ_iter;
@@ -1030,35 +1060,17 @@ void Geometry::printString() {
  * @brief This is a method that initializes the CMFD Lattice and sets
  *          CMFD parameters.
  */
-void Geometry::initializeCmfd(){
-
-  /* Get information about geometry and CMFD mesh */
-  int num_x = _cmfd->getNumX();
-  int num_y = _cmfd->getNumY();
-  double height = getHeight();
-  double width = getWidth();
-  double cell_width = width / num_x;
-  double cell_height = height / num_y;
-
-  /* Create CMFD lattice and set properties */
-  Lattice* lattice = new Lattice();
-  lattice->setWidth(cell_width, cell_height);
-  lattice->setNumX(num_x);
-  lattice->setNumY(num_y);
-  lattice->setOffset(getMinX() + getWidth()/2.0,
-                     getMinY() + getHeight()/2.0);
-  _cmfd->setLattice(lattice);
-
+void Geometry::initializeCmfd() {
 
   /* Set CMFD mesh boundary conditions */
-  _cmfd->setBoundary(0, getMinXBoundaryType());
-  _cmfd->setBoundary(1, getMinYBoundaryType());
-  _cmfd->setBoundary(2, getMaxXBoundaryType());
-  _cmfd->setBoundary(3, getMaxYBoundaryType());
+  _cmfd->setBoundary(SURFACE_X_MIN, getMinXBoundaryType());
+  _cmfd->setBoundary(SURFACE_Y_MIN, getMinYBoundaryType());
+  _cmfd->setBoundary(SURFACE_X_MAX, getMaxXBoundaryType());
+  _cmfd->setBoundary(SURFACE_Y_MAX, getMaxYBoundaryType());
 
   /* Set CMFD mesh dimensions and number of groups */
-  _cmfd->setWidth(width);
-  _cmfd->setHeight(height);
+  _cmfd->setWidth(getWidth());
+  _cmfd->setHeight(getHeight());
   _cmfd->setNumMOCGroups(getNumEnergyGroups());
 
   /* If user did not set CMFD group structure, create CMFD group
@@ -1069,15 +1081,23 @@ void Geometry::initializeCmfd(){
   /* Intialize CMFD Maps */
   _cmfd->initializeCellMap();
   _cmfd->initializeGroupMap();
+
+  /* Initialize the CMFD lattice */
+  Point offset;
+  double offset_x = getMinX() + getWidth()/2.0;
+  double offset_y = getMinY() + getHeight()/2.0;
+  offset.setX(offset_x);
+  offset.setY(offset_y);
+  _cmfd->initializeLattice(&offset);
 }
 
 
 /**
- * @brief Returns the map that maps FSR keys to FSR IDs
- * @return _FSR_keys_map map of FSR keys to FSR IDs
+ * @brief Returns a pointer to the map that maps FSR keys to FSR IDs
+ * @return pointer to _FSR_keys_map map of FSR keys to FSR IDs
  */
-std::unordered_map<std::size_t, fsr_data> Geometry::getFSRKeysMap(){
-  return _FSR_keys_map;
+ParallelHashMap<std::string, fsr_data*>* Geometry::getFSRKeysMap() {
+  return &_FSR_keys_map;
 }
 
 
@@ -1085,24 +1105,22 @@ std::unordered_map<std::size_t, fsr_data> Geometry::getFSRKeysMap(){
  * @brief Returns the vector that maps FSR IDs to FSR key hashes
  * @return _FSR_keys_map map of FSR keys to FSR IDs
  */
-std::vector<std::size_t> Geometry::getFSRsToKeys(){
-  return _FSRs_to_keys;
+std::vector<std::string>* Geometry::getFSRsToKeys() {
+  return &_FSRs_to_keys;
 }
-
 
 /**
  * @brief Return a vector indexed by flat source region IDs which contain
  *        the corresponding Material IDs.
  * @return an integer vector of FSR-to-Material IDs indexed by FSR ID
  */
-std::vector<int> Geometry::getFSRsToMaterialIDs() {
-  if (_num_FSRs == 0)
+std::vector<int>* Geometry::getFSRsToMaterialIDs() {
+  if (_FSR_keys_map.size() == 0)
     log_printf(ERROR, "Unable to return the FSR-to-Material map array since "
                "the Geometry has not initialized FSRs.");
 
-  return _FSRs_to_material_IDs;
+  return &_FSRs_to_material_IDs;
 }
-
 
 /**
  * @brief Sets the _FSR_keys_map map
@@ -1110,22 +1128,21 @@ std::vector<int> Geometry::getFSRsToMaterialIDs() {
  *          the Lattice/Cell/Universe hierarchy for a unique region
  *          and the associated FSR data. fsr_data is a struct that contains
  *          a unique FSR id and a Point located in the highest level Universe
- *          that is contained in the FSR. This method is used when the tracks
- *          are read from file to avoid unnecessary segmentation.
+ *          that is contained in the FSR. This method is used when the tracks 
+ *          are read from file to avoid unnecessary segmentation.  
  * @param FSR_keys_map map of FSR keys to FSR data
  */
-void Geometry::setFSRKeysMap(std::unordered_map<std::size_t, fsr_data>
-                             FSR_keys_map){
-  _FSR_keys_map = FSR_keys_map;
+void Geometry::setFSRKeysMap(ParallelHashMap<std::string, fsr_data*>* 
+                             FSR_keys_map) {
+  _FSR_keys_map = *FSR_keys_map;
 }
-
 
 /**
  * @brief Sets the _FSRs_to_keys vector
  * @param FSRs_to_keys vector of FSR key hashes indexed by FSR IDs
  */
-void Geometry::setFSRsToKeys(std::vector<std::size_t> FSRs_to_keys){
-  _FSRs_to_keys = FSRs_to_keys;
+void Geometry::setFSRsToKeys(std::vector<std::string>* FSRs_to_keys) {
+  _FSRs_to_keys = *FSRs_to_keys;
 }
 
 
@@ -1133,8 +1150,8 @@ void Geometry::setFSRsToKeys(std::vector<std::size_t> FSRs_to_keys){
  * @brief Sets the _FSRs_to_material_IDs vector
  * @param FSRs_to_material_IDs vector mapping FSR IDs to cells
  */
-void Geometry::setFSRsToMaterialIDs(std::vector<int> FSRs_to_material_IDs){
-  _FSRs_to_material_IDs = FSRs_to_material_IDs;
+void Geometry::setFSRsToMaterialIDs(std::vector<int>* FSRs_to_material_IDs) {
+  _FSRs_to_material_IDs = *FSRs_to_material_IDs;
 }
 
 
@@ -1143,7 +1160,7 @@ void Geometry::setFSRsToMaterialIDs(std::vector<int> FSRs_to_material_IDs){
  * @param coords a populated LocalCoords linked list
  * @return boolean indicating whether the coords is within the geometry
  */
-bool Geometry::withinBounds(LocalCoords* coords){
+bool Geometry::withinBounds(LocalCoords* coords) {
 
   double x = coords->getX();
   double y = coords->getY();
@@ -1152,4 +1169,34 @@ bool Geometry::withinBounds(LocalCoords* coords){
     return false;
   else
     return true;
+}
+
+/**
+ * @brief Sets the centroid for an FSR
+ * @details The _FSR_keys_map stores a hash of a std::string representing
+ *          the Lattice/Cell/Universe hierarchy for a unique region
+ *          and the associated FSR data. _centroid is a point that represents
+ *          the numerical centroid of an FSR computed using all segments
+ *          contained in the FSR. This method is used by the TrackGenerator
+ *          to set the centroid after segments have been created. It is
+ *          important to note that this method is a helper function for the
+ *          TrackGenerator and should not be explicitly called by the user.
+ * @param fsr a FSR id
+ * @param centroid a Point representing the FSR centroid
+ */
+void Geometry::setFSRCentroid(int fsr, Point* centroid) {
+  _FSR_keys_map.at(_FSRs_to_keys[fsr])->_centroid = centroid;
+}
+
+
+Cell* Geometry::findCellContainingFSR(int fsr_id) {
+
+  Point* point = _FSR_keys_map.at(_FSRs_to_keys[fsr_id])->_point;
+  LocalCoords* coords = new LocalCoords(point->getX(), point->getY());
+  coords->setUniverse(_root_universe);
+  Cell* cell = findCellContainingCoords(coords);
+
+  delete coords;
+
+  return cell;
 }
