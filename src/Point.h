@@ -30,6 +30,7 @@ private:
 
 public:
   Point();
+  Point(const double x, const double y);
   virtual ~Point();
   void setCoords(const double x, const double y);
   double getX() const;

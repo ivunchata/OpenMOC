@@ -39,9 +39,6 @@ enum surfaceType {
   /** A circle with axis parallel to the z-axis */
   CIRCLE,
   
-  /** A hexagon with axis parallel to the z-axis */
-  HEXAGON,
-
   /** A plane perpendicular to the x-axis */
   XPLANE,
 
@@ -52,7 +49,10 @@ enum surfaceType {
   ZPLANE,
 
   /** A generalized quadratic surface */
-  QUADRATIC
+  QUADRATIC,
+  
+  /** A hexagon with axis parallel to the z-axis */
+  HEXAGON
 };
 
 
@@ -162,7 +162,7 @@ public:
    */
   virtual int intersection(Point* point, double angle, Point* points) =0;
 
-  bool isPointOnSurface(Point* point);
+  bool isPointOnSurface(Point* point) const;
   bool isCoordOnSurface(LocalCoords* coord);
   double getMinDistance(Point* point, double angle, Point* intersection);
 
@@ -428,6 +428,7 @@ public:
   double getMaxZ(int halfspace);
 
   double evaluate(const Point* point) const;
+  double evaluate(const Point* point, const size_t line_num) const; 
   int intersection(Point* point, double angle, Point* points);
 
   std::string toString();
@@ -436,7 +437,7 @@ public:
 
 /**
  * @brief Finds the minimum distance to a Surface.
- * @details Finds the miniumum distance to a Surface from a Point with a
+ * @details Finds the minimum distance to a Surface from a Point with a
  *          given trajectory defined by an angle to this Surface. If the
  *          trajectory will not intersect the Surface, returns INFINITY.
  * @param point a pointer to the Point of interest
@@ -527,14 +528,65 @@ inline double Hexagon::getRadius() {
 
 
 /**
- * @brief Evaluate a Point using the Hexagon's quadratic Surface equation.
+ * @brief Evaluate a Point using the Hexagon's sides Plane equations.
  * @param point a pointer to the Point of interest
- * @return the value of Point in the equation
+ * @return 0.0 if on surface, -1.0 if within the Hexagon, +1.0 otherwise
  */
 inline double Hexagon::evaluate(const Point* point) const {
-  double x = point->getX();
-  double y = point->getY();
-  return 1.0;
+  size_t half_nsides = 0.5 * _nsides;
+  double res1, res2;
+  for(size_t i = 0; i < half_nsides; ++i)
+  {
+    res1 = evaluate(point, i);
+    if (res1 > 0.0) 
+      return 1.0;   // outside for i-th side
+    res2 = evaluate(point, i + half_nsides);
+    if (res2 > 0.0)
+      return 1.0;   // outside for opposite side
+    if (res1 * res2 == 0.0)
+      return 0.0;   // on surface (i-th or opposite)
+    // else continue
+  }
+  return -1.0;  // inside
+}
+
+
+/**
+ * @brief Helper function to evaluate a single side
+ * @param x the x-coordinate of the point evaluated
+ * @param y the y-coordinate of the point evaluated
+ * @param line number starting from 0 for top left side
+ * @return 0.0 if on the side, +1 if outside of the Hexagon and -1 if inside
+ */
+inline double Hexagon::evaluate(const Point* point, const size_t side_num) const {
+  Point pnt (point->getX(), point->getY());
+  if (_sides.at(side_num).isPointOnSurface(&pnt))
+  {
+    // evaluate adjacent sides
+    size_t side_left, side_right;
+    if (side_num == 0)
+      side_left = _nsides - 1;
+    else
+      side_left = side_num - 1;
+    if (side_num == _nsides)
+      side_right = 0;
+    else
+      side_right = side_num + 1;
+    // check whether the evaluated point is on the surface between the adjacent sides
+    if ( (_sides.at(side_left).evaluate(point) < 0.0 || _sides.at(side_left).isPointOnSurface(&pnt)) // at or on the correct side of left surface
+          &&
+         (_sides.at(side_right).evaluate(point) < 0.0 || _sides.at(side_right).isPointOnSurface(&pnt)))// at or on the correct side of right surface
+      return 0.0;
+    else
+      return 1.0;
+  }
+  else  // not on surface
+  {
+    if (_sides.at(side_num).evaluate(point) > 0.0)
+      return 1.0;   // outside
+    else
+      return -1.0;  // inside
+  }
 }
 
 

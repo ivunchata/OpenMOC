@@ -144,7 +144,7 @@ void Surface::setBoundaryType(boundaryType boundary_type) {
  * @param point pointer to the Point of interest
  * @return on (true) or off (false) the Surface
  */
-bool Surface::isPointOnSurface(Point* point) {
+bool Surface::isPointOnSurface(Point* point) const {
 
   /* Uses a threshold to determine whether the point is on the Surface */
   if (abs(evaluate(point)) < ON_SURFACE_THRESH)
@@ -190,10 +190,13 @@ Plane::Plane(const double A, const double B,
   _C = C;
 }
 
+/**
+ * @brief Copy constructor.
+ */ 
 Plane::Plane(const Plane &p)
 {
   _id = p._id;
-  _name = p._name;
+  this->setName(p._name);
   _surface_type = PLANE;
   _A = p._A;
   _B = p._B;
@@ -1021,7 +1024,7 @@ Hexagon::Hexagon(const double x, const double y,
   
   for (size_t i=0 ; i < _nsides ; ++i)
   {
-    double tmp_ang = i * tmp_angle;  // work angle
+    double tmp_ang = i * tmp_angle;  // work angle: a multiple of PI/3 for a hexagon
     Point tmp_a, tmp_b;                       // work points, the plane will be passing trough them.
     // rotate the two points to their respective positions
     tmp_a.setX(t.getX() * cos(tmp_ang) - t.getY() * sin(tmp_ang));
@@ -1042,9 +1045,9 @@ Hexagon::Hexagon(const double x, const double y,
     B = tmp_a.getX() - tmp_b.getX();
     C = tmp_a.getY() * tmp_b.getX() - tmp_a.getX() * tmp_b.getY();
 
-    _sides.emplace_back(A, B, C, -1, "");
+    // append using default constructor for Plane
+    _sides.emplace_back(A, B, C);
   }
-  std::cout << this->toString() << std::endl;
 }
 
 Hexagon::~Hexagon() {
@@ -1146,10 +1149,10 @@ double Hexagon::getMaxZ(int halfspace){
  * @param point pointer to the Point of interest
  * @param angle the angle defining the trajectory in radians
  * @param points pointer to a an array of Points to store intersection Points
- * @return the number of intersection Points (0 or 1)
+ * @return the number of intersection Points (0, 1 or 2)
  */
 int Hexagon::intersection(Point* point, double angle, Point* points) {
-  return 0;
+  return 1;
 }
 
 
@@ -1161,12 +1164,13 @@ int Hexagon::intersection(Point* point, double angle, Point* points) {
  * @return a character array of this Hexagon's attributes
  */
 std::string Hexagon::toString() {
-
+  
   std::stringstream string;
 
   string << "Surface ID = " << _id
          << ", name " << _name
-         << ", type = HEXAGON ";
+         << ", type = HEXAGON "
+         << std::endl;
   for(size_t i=0; i < _sides.size(); ++i)
   {
     string << ", side[" << i << "]: "

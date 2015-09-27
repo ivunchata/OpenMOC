@@ -8,6 +8,14 @@ Point::Point() { }
 
 
 /**
+ * @brief Overloaded constructor to initialize a Point given coordinates
+ */
+Point::Point(const double x, const double y)
+{
+  setCoords(x, y);
+}
+
+/**
  * @brief Destructor
  */
 Point::~Point() { }

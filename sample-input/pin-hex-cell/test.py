@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from openmoc import *
 import openmoc.log as log
 import openmoc.plotter as plotter
@@ -36,9 +37,10 @@ materials = materialize.materialize('../c5g7-materials.h5')
 log.py_printf('NORMAL', 'Creating surfaces...')
 a=10.0
 
-#fuel = Hexagon(x=0.0, y=0.0, radius=a/10, name='fuel surface')
-fuel = Circle(x=0.0, y=0.0, radius=a/10, name='fuel surface')
+fuel = Hexagon(x=0.0, y=0.0, radius=a/5, name='fuel surface')
+#fuel = Circle(x=0.0, y=0.0, radius=a/5, name='fuel surface')
 
+fuel.toString()
 
 
 # root cell/universe boundaries
@@ -51,13 +53,6 @@ root_right.setBoundaryType(openmoc.REFLECTIVE)
 root_bot.setBoundaryType(openmoc.REFLECTIVE)
 root_top.setBoundaryType(openmoc.REFLECTIVE)
 
-# moderator surfaces and cells
-mod_surface = []
-for i in range(6):
-    mod_surface.append(HexPlane(x=0.0, y=0.0, radius=a/2, hex_id=i, name='Hexagonal surface no. ' + str(i)))
-
-# helper surfaces
-mid_axis = XPlane(x=0.0, name='vertical trough the hexagon\'s center')
 
 # Retrieve the materials
 uo2 = materials['UO2']
@@ -70,56 +65,19 @@ gt = materials['Guide Tube']
 pin_fuel = CellBasic(name='pin cell fuel')
 pin_mod = CellBasic(name='pin cell moderator')
 
-mod_cell = []
-for i in range(6):
-    mod_cell.append(CellBasic(name='Surrounding cell no. '  + str(i)))
-
 root_cell = CellFill(name='root cell')
 
 # set materials
 pin_fuel.setMaterial(uo2)
 pin_mod.setMaterial(mox)
-for i in range(6):
-    mod_cell[i].setMaterial(water)
 
 # attach surfaces
+fiel.toString()
 pin_fuel.addSurface(halfspace=-1, surface=fuel)
 #for i in range(6):
 #    pin_fuel.addSurface(halfspace=+1, surface=mod_surface[i])
 
 pin_mod.addSurface(halfspace=+1, surface=fuel)
-for i in range(6):
-    pin_mod.addSurface(halfspace=+1, surface=mod_surface[i])
-
-mod_cell[0].addSurface(halfspace=+1, surface=mod_surface[1])
-mod_cell[0].addSurface(halfspace=-1, surface=mid_axis)
-mod_cell[0].addSurface(halfspace=-1, surface=mod_surface[0])
-mod_cell[0].addSurface(halfspace=-1, surface=root_top)
-
-mod_cell[1].addSurface(halfspace=+1, surface=root_left)
-mod_cell[1].addSurface(halfspace=-1, surface=mod_surface[1])
-mod_cell[1].addSurface(halfspace=+1, surface=root_bot)
-mod_cell[1].addSurface(halfspace=-1, surface=root_top)
-
-mod_cell[2].addSurface(halfspace=+1, surface=mod_surface[1])
-mod_cell[2].addSurface(halfspace=-1, surface=mid_axis)
-mod_cell[2].addSurface(halfspace=+1, surface=root_bot)
-mod_cell[2].addSurface(halfspace=-1, surface=mod_surface[2])
-
-mod_cell[3].addSurface(halfspace=+1, surface=mid_axis)
-mod_cell[3].addSurface(halfspace=+1, surface=mod_surface[4])
-mod_cell[3].addSurface(halfspace=+1, surface=root_bot)
-mod_cell[3].addSurface(halfspace=-1, surface=mod_surface[3])
-
-mod_cell[4].addSurface(halfspace=-1, surface=mod_surface[4])
-mod_cell[4].addSurface(halfspace=-1, surface=root_right)
-mod_cell[4].addSurface(halfspace=+1, surface=root_bot)
-mod_cell[4].addSurface(halfspace=-1, surface=root_top)
-
-mod_cell[5].addSurface(halfspace=+1, surface=mid_axis)
-mod_cell[5].addSurface(halfspace=+1, surface=mod_surface[4])
-mod_cell[5].addSurface(halfspace=-1, surface=mod_surface[5])
-mod_cell[5].addSurface(halfspace=-1, surface=root_top)
 
 # Add the bounding planar surfaces to the root cell
 root_cell.addSurface(halfspace=+1, surface=root_left)
@@ -134,8 +92,6 @@ root_univ = Universe(name='root univ')
 # Add each cell to the universe
 pin_univ.addCell(pin_fuel)
 pin_univ.addCell(pin_mod)
-for i in range(6):
-    pin_univ.addCell(mod_cell[i])
 
 root_univ.addCell(root_cell)
 root_cell.setFill(pin_univ)
