@@ -11,6 +11,7 @@
 
 #ifdef __cplusplus
 #include <limits>
+#include <cmath>    // std::abs
 #include "LocalCoords.h"
 #include "boundary_type.h"
 #endif

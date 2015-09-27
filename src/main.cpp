@@ -12,8 +12,7 @@ int main(int argc, char** argv) {
     double x, y;
     cout <<"x, y?" << endl;
     cin >> x >> y;
-    if (x==-2605)
-      break;
+//    x = 0.; y = 10.11;
     Point p1(x, y);
     Hexagon h1(0., 0., 10., 0, "Test Hexagon");
     Circle  c1(0., 0., 10., 0, "Test Circle");  
@@ -26,6 +25,9 @@ int main(int argc, char** argv) {
     cout << "hexagon: " << h1.evaluate(&p1) << endl;
     cout << " circle: " << c1.evaluate(&p1) << endl;
 
+    if (x==-2605)
+      break;
+    
   }
   
   return 0;

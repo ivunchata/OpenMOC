@@ -37,10 +37,10 @@ materials = materialize.materialize('../c5g7-materials.h5')
 log.py_printf('NORMAL', 'Creating surfaces...')
 a=10.0
 
-fuel = Hexagon(x=0.0, y=0.0, radius=a/5, name='fuel surface')
-#fuel = Circle(x=0.0, y=0.0, radius=a/5, name='fuel surface')
-
-fuel.toString()
+#fuel =  Circle(x=-3.0, y=0.0, radius=a/5, name='fuel surface')
+#gtube = Circle(x= 3.0, y=0.0, radius=a/5, name='guide tube surface')
+fuel =  Hexagon(x=-3.0, y=0.0, radius=a/5, name='fuel surface')
+gtube = Hexagon(x= 3.0, y=0.0, radius=a/5, name='guide tube surface')
 
 
 # root cell/universe boundaries
@@ -63,21 +63,24 @@ gt = materials['Guide Tube']
 
 # setup cells
 pin_fuel = CellBasic(name='pin cell fuel')
+pin_gt = CellBasic(name='pin cell guide tube')
 pin_mod = CellBasic(name='pin cell moderator')
 
 root_cell = CellFill(name='root cell')
 
 # set materials
 pin_fuel.setMaterial(uo2)
+pin_gt.setMaterial(gt)
 pin_mod.setMaterial(mox)
 
 # attach surfaces
-fiel.toString()
 pin_fuel.addSurface(halfspace=-1, surface=fuel)
 #for i in range(6):
 #    pin_fuel.addSurface(halfspace=+1, surface=mod_surface[i])
+pin_gt.addSurface(halfspace=-1, surface=gtube)
 
 pin_mod.addSurface(halfspace=+1, surface=fuel)
+pin_mod.addSurface(halfspace=+1, surface=gtube)
 
 # Add the bounding planar surfaces to the root cell
 root_cell.addSurface(halfspace=+1, surface=root_left)
@@ -91,6 +94,7 @@ root_univ = Universe(name='root univ')
 
 # Add each cell to the universe
 pin_univ.addCell(pin_fuel)
+pin_univ.addCell(pin_gt)
 pin_univ.addCell(pin_mod)
 
 root_univ.addCell(root_cell)
