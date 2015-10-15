@@ -76,22 +76,25 @@ class Geometry {
 
 private:
 
-  /** The boundary conditions at the top of the bounding box containing
-   *  the Geometry. False is for vacuum and true is for reflective BCs. */
-  boundaryType _top_bc;
+//  /** The boundary conditions at the top of the bounding box containing
+//   *  the Geometry. False is for vacuum and true is for reflective BCs. */
+//  boundaryType _top_bc;
+//
+//  /** The boundary conditions at the top of the bounding box containing
+//   *  the Geometry. False is for vacuum and true is for reflective BCs. */
+//  boundaryType _bottom_bc;
+//
+//  /** The boundary conditions at the top of the bounding box containing
+//   *  the Geometry. False is for vacuum and true is for reflective BCs. */
+//  boundaryType _left_bc;
+//
+//  /** The boundary conditions at the top of the bounding box containing
+//   *  the Geometry. False is for vacuum and true is for reflective BCs. */
+//  boundaryType _right_bc;
 
-  /** The boundary conditions at the top of the bounding box containing
-   *  the Geometry. False is for vacuum and true is for reflective BCs. */
-  boundaryType _bottom_bc;
-
-  /** The boundary conditions at the top of the bounding box containing
-   *  the Geometry. False is for vacuum and true is for reflective BCs. */
-  boundaryType _left_bc;
-
-  /** The boundary conditions at the top of the bounding box containing
-   *  the Geometry. False is for vacuum and true is for reflective BCs. */
-  boundaryType _right_bc;
-
+  /** The type of the cell that contains the whole geometry */
+  int _bounding_cell_type;
+  
   /** An map of FSR key hashes to unique fsr_data structs */
   ParallelHashMap<std::string, fsr_data*> _FSR_keys_map;
 
@@ -142,7 +145,7 @@ public:
   std::map<int, Cell*> getAllCells();
   std::map<int, Cell*> getAllMaterialCells();
   std::map<int, Material*> getAllMaterials();
-  void setRootUniverse(Universe* root_universe);
+  int getBoundingCellType();
 
   Cmfd* getCmfd();
   std::vector<std::string>* getFSRsToKeys();
@@ -159,6 +162,8 @@ public:
   void setCmfd(Cmfd* cmfd);
   void setFSRCentroid(int fsr, Point* centroid);
   void setFSRKeysMap(ParallelHashMap<std::string, fsr_data*>* FSR_keys_map);
+  void setRootUniverse(Universe* root_universe);
+  void setBoundingCellType(int type);
 
   /* Find methods */
   Cell* findCellContainingCoords(LocalCoords* coords);

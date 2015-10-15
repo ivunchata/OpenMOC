@@ -221,7 +221,7 @@ double Cell::getMaxZ() {
 
 
 /**
- * @brief Return the boundary condition (REFLECTIVE, VACUUM, or INTERFACE) at
+ * @brief Return the boundary condition (REFLECTIVE, PERIODIC, VACUUM, or INTERFACE) at
  *        the minimum reachable x-coordinate in the Cell.
  * @return the boundary condition at the minimum x-coordinate
  */
@@ -232,7 +232,7 @@ boundaryType Cell::getMinXBoundaryType() {
 
 
 /**
- * @brief Return the boundary condition (REFLECTIVE, VACUUM, or INTERFACE) at
+ * @brief Return the boundary condition (REFLECTIVE, PERIODIC, VACUUM, or INTERFACE) at
  *        the maximum reachable x-coordinate in the Cell.
  * @return the boundary condition at the maximum x-coordinate
  */
@@ -243,7 +243,7 @@ boundaryType Cell::getMaxXBoundaryType() {
 
 
 /**
- * @brief Return the boundary condition (REFLECTIVE, VACUUM, or INTERFACE) at
+ * @brief Return the boundary condition (REFLECTIVE, PERIODIC, VACUUM, or INTERFACE) at
  *        the minimum reachable y-coordinate in the Cell.
  * @return the boundary condition at the minimum y-coordinate
  */
@@ -254,7 +254,7 @@ boundaryType Cell::getMinYBoundaryType() {
 
 
 /**
- * @brief Return the boundary condition (REFLECTIVE, VACUUM, or INTERFACE) at
+ * @brief Return the boundary condition (REFLECTIVE, PERIODIC, VACUUM, or INTERFACE) at
  *        the maximum reachable y-coordinate in the Cell.
  * @return the boundary condition at the maximum y-coordinate
  */
@@ -265,7 +265,7 @@ boundaryType Cell::getMaxYBoundaryType() {
 
 
 /**
- * @brief Return the boundary condition (REFLECTIVE, VACUUM, or INTERFACE) at
+ * @brief Return the boundary condition (REFLECTIVE, PERIODIC, VACUUM, or INTERFACE) at
  *        the minimum reachable z-coordinate in the Cell.
  * @return the boundary condition at the minimum z-coordinate
  */
@@ -276,7 +276,7 @@ boundaryType Cell::getMinZBoundaryType() {
 
 
 /**
- * @brief Return the boundary condition (REFLECTIVE, VACUUM, or INTERFACE) at
+ * @brief Return the boundary condition (REFLECTIVE, PERIODIC, VACUUM, or INTERFACE) at
  *        the maximum reachable z-coordinate in the Cell.
  * @return the boundary condition at the maximum z-coordinate
  */

@@ -577,7 +577,7 @@ void TrackGenerator::generateTracks() {
     }
 
     /* Check to make sure that height, width of the Geometry are nonzero */
-    if (_geometry->getHeight() <= 0 || _geometry->getHeight() <= 0)
+    if (_geometry->getHeight() <= 0 || _geometry->getWidth() <= 0)
       log_printf(ERROR, "The total height and width of the Geometry must be "
                  "non-zero for Track generation. Create a Cell which "
                  "is filled by the entire geometry and bounded by XPlanes "
@@ -667,6 +667,11 @@ void TrackGenerator::initializeTracks() {
 
   log_printf(INFO, "Computing azimuthal angles and track spacing...");
 
+  if (_geometry->getBoundingCellType() != HEXAGON && 
+          _geometry->getBoundingCellType() != PLANE) 
+    log_printf(ERROR, "Bounding surfaces other than HEXAGON or "
+            "PLANE are not supported!");
+  
   /* Each element in arrays corresponds to an angle in phi_eff */
   /* Track spacing along x,y-axes, and perpendicular to each Track */
   double* dx_eff = new double[_num_azim];
@@ -682,93 +687,114 @@ void TrackGenerator::initializeTracks() {
   double height = _geometry->getHeight();
 
   /* Determine azimuthal angles and track spacing */
-  for (int i = 0; i < _num_azim; i++) {
-
-    /* A desired azimuthal angle for the user-specified number of
-     * azimuthal angles */
-    double phi = 2.0 * M_PI / iazim * (0.5 + i);
-
-    /* The number of intersections with x,y-axes */
-    _num_x[i] = (int) (fabs(width / _spacing * sin(phi))) + 1;
-    _num_y[i] = (int) (fabs(height / _spacing * cos(phi))) + 1;
-
-    /* Total number of Tracks */
-    _num_tracks[i] = _num_x[i] + _num_y[i];
-
-    /* Effective/actual angle (not the angle we desire, but close) */
-    phi_eff[i] = atan((height * _num_x[i]) / (width * _num_y[i]));
-
-    /* Fix angles in range(pi/2, pi) */
-    if (phi > M_PI / 2)
-      phi_eff[i] = M_PI - phi_eff[i];
-
-    /* Effective Track spacing (not spacing we desire, but close) */
-    dx_eff[i] = (width / _num_x[i]);
-    dy_eff[i] = (height / _num_y[i]);
-    d_eff[i] = (dx_eff[i] * sin(phi_eff[i]));
+  if (_geometry->getBoundingCellType() == HEXAGON) {
+    for (int i = 0; i < _num_azim; i++) {
+      // TODO: implement track generation for hexagonal bounding box
+      
+    }
   }
+  if (_geometry->getBoundingCellType() == PLANE) {
+    for (int i = 0; i < _num_azim; i++) {
 
+      /* A desired azimuthal angle for the user-specified number of
+       * azimuthal angles */
+      double phi = 2.0 * M_PI / iazim * (0.5 + i);
+
+      /* The number of intersections with x,y-axes */
+      _num_x[i] = (int) (fabs(width / _spacing * sin(phi))) + 1;
+      _num_y[i] = (int) (fabs(height / _spacing * cos(phi))) + 1;
+
+      /* Total number of Tracks */
+      _num_tracks[i] = _num_x[i] + _num_y[i];
+
+      /* Effective/actual angle (not the angle we desire, but close) */
+      phi_eff[i] = atan((height * _num_x[i]) / (width * _num_y[i]));
+
+      /* Fix angles in range(pi/2, pi) */
+      if (phi > M_PI / 2)
+        phi_eff[i] = M_PI - phi_eff[i];
+
+      /* Effective Track spacing (not spacing we desire, but close) */
+      dx_eff[i] = (width / _num_x[i]);
+      dy_eff[i] = (height / _num_y[i]);
+      d_eff[i] = (dx_eff[i] * sin(phi_eff[i]));
+    }
+  }
+  /* Azimuthal angles and track spacing are determined */
+  
   /* Compute azimuthal angle quadrature weights */
-  for (int i = 0; i < _num_azim; i++) {
-
-    if (i < _num_azim - 1)
-      x1 = 0.5 * (phi_eff[i+1] - phi_eff[i]);
-    else
-      x1 = 2 * M_PI / 2.0 - phi_eff[i];
-
-    if (i >= 1)
-      x2 = 0.5 * (phi_eff[i] - phi_eff[i-1]);
-    else
-      x2 = phi_eff[i];
-
-    /* Multiply weight by 2 because angles are in [0, Pi] */
-    _azim_weights[i] = (x1 + x2) / (2 * M_PI) * d_eff[i] * 2;
+  if (_geometry->getBoundingCellType() == HEXAGON) {
+    for (int i = 0; i < _num_azim; i++) {
+    }
   }
+  if (_geometry->getBoundingCellType() == PLANE) {
+    for (int i = 0; i < _num_azim; i++) {
 
-  log_printf(INFO, "Generating Track start and end points...");
+      if (i < _num_azim - 1)
+        x1 = 0.5 * (phi_eff[i+1] - phi_eff[i]);
+      else
+        x1 = 2 * M_PI / 2.0 - phi_eff[i];
 
+      if (i >= 1)
+        x2 = 0.5 * (phi_eff[i] - phi_eff[i-1]);
+      else
+        x2 = phi_eff[i];
+
+      /* Multiply weight by 2 because angles are in [0, Pi] */
+      _azim_weights[i] = (x1 + x2) / (2 * M_PI) * d_eff[i] * 2;
+    }
+  }
+  /* Azimuthal angle quadrature weights are computed */
+  
   /* Compute Track starting and end points */
-  for (int i = 0; i < _num_azim; i++) {
-
-    /* Tracks for azimuthal angle i */
-    _tracks[i] = new Track[_num_tracks[i]];
-
-    /* Compute start points for Tracks starting on x-axis */
-    for (int j = 0; j < _num_x[i]; j++) {
-      if (i < _num_azim / 2)
-        _tracks[i][j].getStart()->setCoords
-          (dx_eff[i] * (_num_x[i] - j - 0.5), 0);
-      else
-        _tracks[i][j].getStart()->setCoords(dx_eff[i] * (0.5 + j), 0);
-    }
-
-    /* Compute start points for Tracks starting on y-axis */
-    for (int j = 0; j < _num_y[i]; j++) {
-
-      /* If Track points to the upper right */
-      if (i < _num_azim / 2)
-        _tracks[i][_num_x[i]+j].getStart()->setCoords(0,
-                                     dy_eff[i] * (0.5 + j));
-
-      /* If Track points to the upper left */
-      else
-        _tracks[i][_num_x[i]+j].getStart()->setCoords(width,
-                                     dy_eff[i] * (0.5 + j));
-    }
-
-    /* Compute the exit points for each Track */
-    for (int j = 0; j < _num_tracks[i]; j++) {
-
-      /* Set the Track's end point */
-      Point* start = _tracks[i][j].getStart();
-      Point* end = _tracks[i][j].getEnd();
-      computeEndPoint(start, end, phi_eff[i], width, height);
-
-      /* Set the Track's azimuthal angle */
-      _tracks[i][j].setPhi(phi_eff[i]);
+  log_printf(INFO, "Generating Track start and end points...");
+  if (_geometry->getBoundingCellType() == HEXAGON) {
+    for (int i = 0; i < _num_azim; i++) {
     }
   }
+  if (_geometry->getBoundingCellType() == PLANE) {
+    for (int i = 0; i < _num_azim; i++) {
 
+      /* Tracks for azimuthal angle i */
+      _tracks[i] = new Track[_num_tracks[i]];
+
+      /* Compute start points for Tracks starting on x-axis */
+      for (int j = 0; j < _num_x[i]; j++) {
+        if (i < _num_azim / 2)
+          _tracks[i][j].getStart()->setCoords
+            (dx_eff[i] * (_num_x[i] - j - 0.5), 0);
+        else
+          _tracks[i][j].getStart()->setCoords(dx_eff[i] * (0.5 + j), 0);
+      }
+
+      /* Compute start points for Tracks starting on y-axis */
+      for (int j = 0; j < _num_y[i]; j++) {
+
+        /* If Track points to the upper right */
+        if (i < _num_azim / 2)
+          _tracks[i][_num_x[i]+j].getStart()->setCoords(0,
+                                       dy_eff[i] * (0.5 + j));
+
+        /* If Track points to the upper left */
+        else
+          _tracks[i][_num_x[i]+j].getStart()->setCoords(width,
+                                       dy_eff[i] * (0.5 + j));
+      }
+
+      /* Compute the exit points for each Track */
+      for (int j = 0; j < _num_tracks[i]; j++) {
+
+        /* Set the Track's end point */
+        Point* start = _tracks[i][j].getStart();
+        Point* end = _tracks[i][j].getEnd();
+        computeEndPoint(start, end, phi_eff[i], width, height);
+
+        /* Set the Track's azimuthal angle */
+        _tracks[i][j].setPhi(phi_eff[i]);
+      }
+    }
+  }
+  /* Track starting and end points are computed */
   delete [] dx_eff;
   delete [] dy_eff;
   delete [] d_eff;
@@ -1100,7 +1126,7 @@ void TrackGenerator::initializeBoundaryConditions() {
   Track* track;
   int ic;
   
-  /* Loop over the all the tracks and set the incoming and outgoing tracks
+  /* Loop over all the tracks and set the incoming and outgoing tracks
    * and incoming and outgoing boundary conditions. */
   for (int i=0; i < _num_azim; i++) {
     ic = _num_azim - i - 1;

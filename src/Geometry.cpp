@@ -17,6 +17,9 @@ void reset_auto_ids() {
  * @brief Constructor initializes an empty Geometry.
  */
 Geometry::Geometry() {
+  
+  /* Default bounding cell type is a square */
+  _bounding_cell_type = PLANE;
 
   /* Initialize CMFD object to NULL */
   _cmfd = NULL;
@@ -352,6 +355,13 @@ std::map<int, Material*> Geometry::getAllMaterials() {
   return all_materials;
 }
 
+/**
+ * @brief Returns the surface type of the bounding cell
+ * @return Surface type (see 'enum surfaceType' from Surface.h)
+ */
+int Geometry::getBoundingCellType() {
+  return _bounding_cell_type;
+}
 
 /**
  * @brief Returns the Universe at the root node in the CSG tree.
@@ -1136,6 +1146,18 @@ void Geometry::setFSRKeysMap(ParallelHashMap<std::string, fsr_data*>*
                              FSR_keys_map) {
   _FSR_keys_map = *FSR_keys_map;
 }
+
+
+/**
+ * @brief Sets the bounding cell type
+ * @details The track generation is different for rectangular and hexagonal 
+ *          geometries, that is why the bounding shape has to be specified explicitly.
+ * @param int type of surface for the boundary cell
+ */
+void Geometry::setBoundingCellType(int type) {
+  _bounding_cell_type = type;
+}
+
 
 /**
  * @brief Sets the _FSRs_to_keys vector

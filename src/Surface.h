@@ -387,6 +387,9 @@ private:
   /** The Hexagon is a friend of the Plane class */
   friend class Plane;
 
+  /** Helper function for point evaluation */
+  double evaluate(const Point* point, const size_t line_num) const;
+  
 public:
   Hexagon(const double x, const double y, const double radius,
          const int id=0, const char* name="");
@@ -403,7 +406,6 @@ public:
   double getMaxZ(int halfspace);
 
   double evaluate(const Point* point) const;
-  double evaluate(const Point* point, const size_t line_num) const;
   int intersection(Point* point, double angle, Point* points);
 
   std::string toString();
@@ -532,7 +534,7 @@ inline double Hexagon::evaluate(const Point* point, const size_t side_num) const
       side_left = _nsides - 1;
     else
       side_left = side_num - 1;
-    if (side_num == _nsides)
+    if (side_num + 1 == _nsides)
       side_right = 0;
     else
       side_right = side_num + 1;

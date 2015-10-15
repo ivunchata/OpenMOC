@@ -19,7 +19,7 @@ enum boundaryType {
   /** A reflective boundary condition */
   REFLECTIVE,
 
-  /** A reflective boundary condition */
+  /** A periodic boundary condition */
   PERIODIC,
   
   /** No boundary type (typically an interface between flat source regions) */

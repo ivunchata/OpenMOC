@@ -30,16 +30,10 @@ materials = openmoc.materialize.materialize('../c5g7-materials.h5')
 
 openmoc.log.py_printf('NORMAL', 'Creating surfaces...')
 
-circle = openmoc.Hexagon(x=0.0, y=0.0, radius=1.0, name='pin')
-left = openmoc.XPlane(x=-2.0, name='left')
-right = openmoc.XPlane(x=2.0, name='right')
-top = openmoc.YPlane(y=2.0, name='top')
-bottom = openmoc.YPlane(y=-2.0, name='bottom')
+hexagon  = openmoc.Hexagon(x=0.0, y=0.0, radius=1.0,  name='fuel')
+boundary = openmoc.Hexagon(x=0.0, y=0.0, radius=10.0, name='boundary')
 
-left.setBoundaryType(openmoc.REFLECTIVE)
-right.setBoundaryType(openmoc.REFLECTIVE)
-top.setBoundaryType(openmoc.REFLECTIVE)
-bottom.setBoundaryType(openmoc.REFLECTIVE)
+boundary.setBoundaryType(openmoc.PERIODIC)
 
 
 ###############################################################################
@@ -50,15 +44,12 @@ openmoc.log.py_printf('NORMAL', 'Creating cells...')
 
 fuel = openmoc.Cell(name='fuel')
 fuel.setFill(materials['UO2'])
-fuel.addSurface(halfspace=-1, surface=circle)
+fuel.addSurface(halfspace=-1, surface=hexagon)
 
 moderator = openmoc.Cell(name='moderator')
 moderator.setFill(materials['Water'])
-moderator.addSurface(halfspace=+1, surface=circle)
-moderator.addSurface(halfspace=+1, surface=left)
-moderator.addSurface(halfspace=-1, surface=right)
-moderator.addSurface(halfspace=+1, surface=bottom)
-moderator.addSurface(halfspace=-1, surface=top)
+moderator.addSurface(halfspace=+1, surface=hexagon)
+moderator.addSurface(halfspace=-1, surface=boundary)
 
 
 ###############################################################################
@@ -81,6 +72,7 @@ openmoc.log.py_printf('NORMAL', 'Creating geometry...')
 
 geometry = openmoc.Geometry()
 geometry.setRootUniverse(root_universe)
+geometry.setBoundingCellType(openmoc.HEXAGON)
 geometry.initializeFlatSourceRegions()
 
 

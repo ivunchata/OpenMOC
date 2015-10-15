@@ -36,10 +36,10 @@ right = openmoc.XPlane(x=2.0, name='right')
 top = openmoc.YPlane(y=2.0, name='top')
 bottom = openmoc.YPlane(y=-2.0, name='bottom')
 
-left.setBoundaryType(openmoc.REFLECTIVE)
-right.setBoundaryType(openmoc.REFLECTIVE)
-top.setBoundaryType(openmoc.REFLECTIVE)
-bottom.setBoundaryType(openmoc.REFLECTIVE)
+left.setBoundaryType(openmoc.PERIODIC)
+right.setBoundaryType(openmoc.PERIODIC)
+top.setBoundaryType(openmoc.PERIODIC)
+bottom.setBoundaryType(openmoc.PERIODIC)
 
 
 ###############################################################################

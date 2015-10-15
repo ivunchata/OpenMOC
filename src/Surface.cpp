@@ -1066,7 +1066,7 @@ double Hexagon::getMinZ(int halfspace){
  * @param halfspace the halfspace of the Hexagon to consider
  * @return the maximum z value of INFINITY
  */
-double Hexagon::getMaxZ(int halfspace){
+double Hexagon::getMaxZ(int halfspace) {
   return std::numeric_limits<double>::infinity();
 }
 
@@ -1079,7 +1079,18 @@ double Hexagon::getMaxZ(int halfspace){
  * @return the number of intersection Points (0, 1 or 2)
  */
 int Hexagon::intersection(Point* point, double angle, Point* points) {
-  return 1;
+  int num = 0;
+  Point* p0 = new Point();
+  
+  for (size_t i=0; i < _sides.size(); ++i) {
+    if (_sides.at(i).intersection(point, angle, p0) > 0 
+            && evaluate(p0) <= 0.0) {
+      // there is an intersection AND the point is on the hexagon
+      points[num++].setCoords(p0->getX(), p0->getY());
+    } 
+  }
+  delete p0;
+  return num;
 }
 
 
