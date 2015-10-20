@@ -688,71 +688,139 @@ void TrackGenerator::initializeTracks() {
 
   /* Determine azimuthal angles and track spacing */
   if (_geometry->getBoundingCellType() == HEXAGON) {
-    for (int i = 0; i < _num_azim; i++) {
-      // TODO: implement track generation for hexagonal bounding box
-      
-    }
+    // a wrapping rectangle is used to calculate the periodic 
+    // tracks in the case of a hexagonal boundary,
+    // therefore the total height is modified
+    /*     /\
+     *  __/__\__
+     * | /    \ |
+     * |/      \|
+     * |        |
+     * |        |
+     * |        |
+     * |        |
+     * |\      /|
+     * |_\____/_|
+     *    \  / 
+     *     \/
+     */
+    height *= 0.75;    
   }
-  if (_geometry->getBoundingCellType() == PLANE) {
-    for (int i = 0; i < _num_azim; i++) {
+  
+  for (int i = 0; i < _num_azim; i++) {
 
-      /* A desired azimuthal angle for the user-specified number of
-       * azimuthal angles */
-      double phi = 2.0 * M_PI / iazim * (0.5 + i);
+    /* A desired azimuthal angle for the user-specified number of
+     * azimuthal angles */
+    double phi = 2.0 * M_PI / iazim * (0.5 + i);
 
-      /* The number of intersections with x,y-axes */
-      _num_x[i] = (int) (fabs(width / _spacing * sin(phi))) + 1;
-      _num_y[i] = (int) (fabs(height / _spacing * cos(phi))) + 1;
+    /* The number of intersections with x,y-axes */
+    _num_x[i] = (int) (fabs(width / _spacing * sin(phi))) + 1;
+    _num_y[i] = (int) (fabs(height / _spacing * cos(phi))) + 1;
 
-      /* Total number of Tracks */
-      _num_tracks[i] = _num_x[i] + _num_y[i];
+    /* Total number of Tracks */
+    _num_tracks[i] = _num_x[i] + _num_y[i];
 
-      /* Effective/actual angle (not the angle we desire, but close) */
-      phi_eff[i] = atan((height * _num_x[i]) / (width * _num_y[i]));
+    /* Effective/actual angle (not the angle we desire, but close) */
+    phi_eff[i] = atan((height * _num_x[i]) / (width * _num_y[i]));
 
-      /* Fix angles in range(pi/2, pi) */
-      if (phi > M_PI / 2)
-        phi_eff[i] = M_PI - phi_eff[i];
+    /* Fix angles in range(pi/2, pi) */
+    if (phi > M_PI / 2)
+      phi_eff[i] = M_PI - phi_eff[i];
 
-      /* Effective Track spacing (not spacing we desire, but close) */
-      dx_eff[i] = (width / _num_x[i]);
-      dy_eff[i] = (height / _num_y[i]);
-      d_eff[i] = (dx_eff[i] * sin(phi_eff[i]));
-    }
+    /* Effective Track spacing (not spacing we desire, but close) */
+    dx_eff[i] = (width / _num_x[i]);
+    dy_eff[i] = (height / _num_y[i]);
+    d_eff[i] = (dx_eff[i] * sin(phi_eff[i]));
   }
-  /* Azimuthal angles and track spacing are determined */
   
   /* Compute azimuthal angle quadrature weights */
-  if (_geometry->getBoundingCellType() == HEXAGON) {
-    for (int i = 0; i < _num_azim; i++) {
-    }
+  for (int i = 0; i < _num_azim; i++) {
+    
+    if (i < _num_azim - 1)
+      x1 = 0.5 * (phi_eff[i+1] - phi_eff[i]);
+    else
+      x1 = 2 * M_PI / 2.0 - phi_eff[i];
+
+    if (i >= 1)
+      x2 = 0.5 * (phi_eff[i] - phi_eff[i-1]);
+    else
+      x2 = phi_eff[i];
+
+    /* Multiply weight by 2 because angles are in [0, Pi] */
+    _azim_weights[i] = (x1 + x2) / (2 * M_PI) * d_eff[i] * 2;
   }
-  if (_geometry->getBoundingCellType() == PLANE) {
-    for (int i = 0; i < _num_azim; i++) {
 
-      if (i < _num_azim - 1)
-        x1 = 0.5 * (phi_eff[i+1] - phi_eff[i]);
-      else
-        x1 = 2 * M_PI / 2.0 - phi_eff[i];
-
-      if (i >= 1)
-        x2 = 0.5 * (phi_eff[i] - phi_eff[i-1]);
-      else
-        x2 = phi_eff[i];
-
-      /* Multiply weight by 2 because angles are in [0, Pi] */
-      _azim_weights[i] = (x1 + x2) / (2 * M_PI) * d_eff[i] * 2;
-    }
-  }
-  /* Azimuthal angle quadrature weights are computed */
-  
   /* Compute Track starting and end points */
   log_printf(INFO, "Generating Track start and end points...");
   if (_geometry->getBoundingCellType() == HEXAGON) {
+    height /= 0.75; // restore height back to initial value
+    
     for (int i = 0; i < _num_azim; i++) {
+      // _tracks[i] will store the actual number of tracks, 
+      //since there may be some that are outside the Hexagon boundary
+      Track* tmp_tracks;        
+      int real_num_tracks = 0;
+      
+      tmp_tracks = new Track[_num_tracks[i]];
+      
+      /* Compute start points for Tracks starting on x-axis */
+      for (int j = 0; j < _num_x[i]; j++) {
+        
+        Point* start = tmp_tracks[j].getStart();
+        Point* end = tmp_tracks[j].getEnd();
+        
+        /* If Track points to the upper right */
+        if (i < _num_azim / 2) {
+          if (computeHexEndPoints(start, end, 
+                  dx_eff[i] * (_num_x[i] - j - 0.5), 0, 
+                  phi_eff[i], height))
+            real_num_tracks ++;
+        }
+        /* If Track points to the upper left */
+        else {
+          if (computeHexEndPoints(start, end, 
+                  dx_eff[i] * (0.5 + j), 0, 
+                  phi_eff[i], height))
+            real_num_tracks ++;
+        }
+      }
+
+      /* Compute start points for Tracks starting on y-axis */
+      for (int j = 0; j < _num_y[i]; j++) {
+        
+        Point* start = tmp_tracks[_num_x[i]+j].getStart();
+        Point* end = tmp_tracks[_num_x[i]+j].getEnd();
+
+        /* If Track points to the upper right */
+        if (i < _num_azim / 2) {
+          if (computeHexEndPoints(start, end, 
+                  0, dy_eff[i] * (0.5 + j), 
+                  phi_eff[i], height))
+            real_num_tracks ++;
+        }
+
+        /* If Track points to the upper left */
+        else {
+          if (computeHexEndPoints(start, end, 
+                  width, dy_eff[i] * (0.5 + j), 
+                  phi_eff[i], height))
+            real_num_tracks ++;
+        }
+      }
+      
+      // Move actual tracks to the member variable _tracks
+      _tracks[i] = new Track[real_num_tracks];
+      for(int j =0 ; j < real_num_tracks; j++) {
+        _tracks[i][j].getStart()->setCoords(tmp_tracks[j].getStart()->getX(),
+                tmp_tracks[j].getStart()->getY());
+        _tracks[i][j].getEnd()->setCoords(tmp_tracks[j].getEnd()->getX(),
+                tmp_tracks[j].getEnd()->getY());
+      }
+      delete [] tmp_tracks;
     }
   }
-  if (_geometry->getBoundingCellType() == PLANE) {
+  
+  else if (_geometry->getBoundingCellType() == PLANE) {
     for (int i = 0; i < _num_azim; i++) {
 
       /* Tracks for azimuthal angle i */
@@ -1097,6 +1165,47 @@ void TrackGenerator::computeEndPoint(Point* start, Point* end,
     delete [] points;
 
     return;
+}
+
+
+/**
+ * @brief This helper method for TrackGenerator::generateTracks() finds 
+ *        start and end Points of a Track with a defined start Point and an 
+ *        angle from x-axis.
+ * @details This function does not return a value but instead saves the x/y
+ *          coordinates of the end Point directly within the Track's end Points.
+ * @param start pointer to the Track start Point
+ * @param end pointer to a Point to store the end Point coordinates
+ * @param st_x x-coordinate of a point on the track
+ * @param st_y y-coordinate of a point on the track
+ * @param phi the azimuthal angle
+ * @param height the height of the Geometry, i.e. the diameter of the Hexagon
+ * @return true if the track crosses the Hexagon, false otherwise
+ */
+bool TrackGenerator::computeHexEndPoints(Point* start, Point* end,
+        const double tr_x, const double tr_y, const double phi, 
+        const double height) {
+  
+  bool ret_val = false;
+  Point tmp_point(tr_x, tr_y);
+  Point * se_tmp_points = new Point [2];
+  Hexagon boundary(0., 0., height * 0.5);
+  int n_crossing = boundary.intersection(&tmp_point, phi, se_tmp_points);
+  
+  switch (n_crossing){
+    //TODO: make sure the order is correct!
+    case 1: // se_tmp_points 0 and 1 coincide
+    case 2:
+      start->setCoords(se_tmp_points[0].getX(),
+              se_tmp_points[0].getY());
+      end->setCoords(se_tmp_points[1].getX(),
+              se_tmp_points[1].getY());
+      ret_val = true;
+      break;
+      // the track does not intersect the hexagon
+  }
+  delete [] se_tmp_points;
+  return ret_val;
 }
 
 

@@ -85,6 +85,9 @@ private:
 
   void computeEndPoint(Point* start, Point* end,  const double phi,
                        const double width, const double height);
+  bool computeHexEndPoints(Point* start, Point* end, const double tr_x,
+                       const double tr_y, const double phi,
+                       const double height);
 
   void initializeTrackFileDirectory();
   void initializeTracks();

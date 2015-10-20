@@ -1097,8 +1097,8 @@ int Hexagon::intersection(Point* point, double angle, Point* points) {
 /**
  * @brief Converts this Hexagon's attributes to a character array.
  * @details The character array returned conatins the type of Plane (ie,
- *          HEXAGON) and the A, B, C, D and E coefficients in the
- *          quadratic Surface equation.
+ *          HEXAGON), the radius of the circumscribed circle 
+ *          and the A, B, C coefficients of all of the sides' equations.
  * @return a character array of this Hexagon's attributes
  */
 std::string Hexagon::toString() {
